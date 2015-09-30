@@ -13,11 +13,8 @@ from collections import deque
 import pyo
 
 
-class Modulator:
-    def __init__(self, midiproc, rtsigproc, chooser):
-        self.midiproc = midiproc
-        self.rtsigproc = rtsigproc
-        self.chooser = chooser
+class MidiProc:
+    def __init__(self):
         self.output = deque([])
 
     def execute(self):

@@ -13,11 +13,9 @@ from collections import deque
 import pyo
 
 
-class Modulator:
-    def __init__(self, midiproc, rtsigproc, chooser):
-        self.midiproc = midiproc
-        self.rtsigproc = rtsigproc
-        self.chooser = chooser
+class Chooser:
+    def __init__(self, seed_gen):
+        self.seedgen = seed_gen
         self.output = deque([])
 
     def execute(self):
