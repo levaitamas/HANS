@@ -3,24 +3,22 @@
 """
 HANS
 
-Copyright (C) 2015-     Tamas Levai <levait@tmit.bme.hu>
-                        Beregi Richárd <richard.beregi@sztaki.mta.hu>
-
-
+Copyright (C) 2015-     Tamás Lévai    <levait@tmit.bme.hu>
+Copyright (C) 2015-     Richárd Beregi <richard.beregi@sztaki.mta.hu>
 """
-
+from pyo import *
 from collections import deque
 
-from pyo import *
 
-class MidiProc:
-    def __init__(self, server):
+class MidiProc():
+    def __init__(self):
         self.output = deque([])
-        self.rawm = RawMidi(self.midievent)   
+        self.rawm = RawMidi(midievent)
 
     def execute(self):
         pass
 
-    def midievent(status, note, velocity):
-        #if status == 153 && note == 36 && velocity >= 63
-        print status, note, velocity 
+
+def midievent(status, note, velocity):
+    # if status == 153 && note == 36 && velocity >= 63:
+    print status, note, velocity
