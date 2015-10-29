@@ -6,6 +6,10 @@ __pycache__/
 .Python
 *.egg
 
+#Sound
+*.aif
+*.aiff
+
 #LaTeX
 *.aux
 *.glo
