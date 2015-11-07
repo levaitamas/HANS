@@ -27,10 +27,7 @@ class Chooser:
         self.seedgen = seed_gen
         self.sample_path = sample_path
         self.samples = []
-        for root, dirnames, filenames in os.walk(sample_path):
-            for filename in fnmatch.filter(filenames, '*.aiff'):
-                self.samples.append(os.path.join(root, filename))
-        self.number_of_samples = len(self.samples)
+        self.reload_samples()
         self.output = ''
         self.execute()
 
@@ -38,6 +35,13 @@ class Chooser:
         self.seedgen.execute()
         self.output = self.samples[(self.seedgen.output %
                                     self.number_of_samples)]
+
+    def reload_samples(self):
+        self.samples = []
+        for root, dirnames, filenames in os.walk(self.sample_path):
+            for filename in fnmatch.filter(filenames, '*.aiff'):
+                self.samples.append(os.path.join(root, filename))
+        self.number_of_samples = len(self.samples)
 
 
 class MidiProc:
@@ -50,7 +54,6 @@ class MidiProc:
 
 def handle_midievent(status, note, velocity):
     if status == 153 and note == 36 and velocity >= 63:
-        # print status, note, velocity
         modulatr.execute()
 
 
@@ -58,19 +61,13 @@ class Modulator:
     def __init__(self, chooser):
         assert chooser
         self.chooser = chooser
-        self.output = SfPlayer(self.chooser.output,
-                               loop=False)
+        self.output = SfPlayer(self.chooser.output, loop=False)
 
     def execute(self):
-        if random.random() < 0.5:
-            if self.chooser.output:
-                if self.output:
-                    self.output.setSound(self.chooser.output)
-                    self.output.out()
-                self.chooser.output = ''
-            else:
-                if random.random() < 0.3:
-                    self.chooser.execute()
+        if random.random() < 0.6:
+            self.chooser.execute()
+            self.output.setSound(self.chooser.output)
+            self.output.out()
 
 
 if __name__ == "__main__":
