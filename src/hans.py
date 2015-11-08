@@ -53,7 +53,7 @@ class MidiProc:
 
 
 def handle_midievent(status, note, velocity):
-    if status == 153 and note == 36 and velocity >= 63:
+    if status == 153 and note == 36 and velocity >= 48:
         modulatr.execute()
 
 
@@ -66,8 +66,11 @@ class Modulator:
     def execute(self):
         if random.random() < 0.6:
             self.chooser.execute()
-            self.output.setSound(self.chooser.output)
-            self.output.out()
+            self.output = SfPlayer(self.chooser.output, loop=False)
+            if random.random() < 0.5:
+                self.output.out()
+            else:
+                self.output.out(1)
 
 
 if __name__ == "__main__":
