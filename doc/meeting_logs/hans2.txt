@@ -1,0 +1,12 @@
+HANS 2.0
+
+* smaple mapparendszer - mood/style/forrás szerint tagolva (feloldja a tagolási dolgokat) + else mappa ha valami nem jó sehova
+
+* modulator - változtasson a sample-n VMI alapján
+	VMI:	- seed SeedGen-ből
+			- saját softcomputing cucc
+	AMIT: 	- lejátszási sebesség (sample hosszak max 2-3 sec) ~ hangmagasság
+			- hangerő (előtte normalizált sample-k)
+			- panorama
+			- ???
+		-> function(szám) és ez alapján skáláz mind
