@@ -6,7 +6,14 @@ HANS
 Copyright (C) 2015-     Tamás Lévai    <levait@tmit.bme.hu>
 Copyright (C) 2015-     Richárd Beregi <richard.beregi@sztaki.mta.hu>
 """
-from pyo import *
+try:
+    from pyo import *
+except ImportError:
+    raise SystemError("Python-Pyo not found. Please, install it.")
+try:
+    import wx
+except ImportError:
+    raise SystemError("wxPython not found. Please, install it.")
 import fnmatch
 import os
 import sys
@@ -48,12 +55,10 @@ class MidiProc:
     def __init__(self):
         self.rawm = RawMidi(handle_midievent)
 
-    def execute(self):
-        pass
-
 
 def handle_midievent(status, note, velocity):
-    if status == 153 and note == 36 and velocity >= 48:
+    # filter accented kick note-on messages
+    if 144 <= status <= 159 and note == 36 and velocity >= 48:
         modulatr.execute()
 
 
@@ -74,9 +79,10 @@ class Modulator:
 
 
 if __name__ == "__main__":
-    # check pyo version because RawMidi is supported only since version 0.7.6
+    # RawMidi is supported only in Python-Pyo version 0.7.6 or later
     if int(''.join(map(str, getVersion()))) < 76:
-        sys.exit(1)
+        raise SystemError("Please, update your Python-Pyo install" +
+                          "to version 0.7.6 or later.")
 
     # setup server
     if sys.platform.startswith("win"):
@@ -84,8 +90,8 @@ if __name__ == "__main__":
     else:
         server = Server(audio='jack', jackname='HANS').boot()
 
-    # enable debug info
-    server.setVerbosity(8)
+    # uncomment following line to enable debug info
+    # server.setVerbosity(8)
 
     # set MIDI input
     pm_list_devices()
