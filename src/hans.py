@@ -190,9 +190,9 @@ def handle_midievent(status, note, velocity):
 
 
 def doTheWookieeBoogie():
-    for _ in range(30):
+    for _ in range(random.randint(42, 64)):
         handle_midievent(145, 36, 125)
-        time.sleep(0.2 + random.random()/2)
+        time.sleep(0.07 + random.random()/5)
 
 
 class Modulator:
