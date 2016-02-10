@@ -173,9 +173,20 @@ class MidiProc:
 
 
 def handle_midievent(status, note, velocity):
-    # filter accented kick note-on messages
-    if 144 <= status <= 159 and note == 36 and velocity >= 48:
-        modulator.execute()
+    # filter note-on messages
+    if 144 <= status <= 159:
+        # filter accented bass drum
+        if note == 36 and velocity >= 48:
+            if random.random() < 0.6:
+                modulator.execute()
+        # filter accented snare drum
+        elif note == 36 and velocity >= 52:
+            if random.random() < 0.3:
+                modulator.execute()
+        # filter accented ride
+        elif note == 59 and velocity >= 64:
+            if random.random() < 0.1:
+                modulator.execute()
 
 
 def doTheWookieeBoogie():
@@ -196,37 +207,36 @@ class Modulator:
                             'Frequency Shifter': 0, 'Chorus': 0, 'Reverb': 0}
 
     def execute(self):
-        if random.random() < 0.6:
-            self.chooser.execute()
-            sample = self.chooser.output
-            player = SfPlayer(sample.path, loop=False)
-            if self.effectchain['Volume']:
-                player.setMul(random.random())
-            if self.effectchain['Speed']:
-                player.setSpeed(0.5 + random.random()/2)
-            if self.effectchain['Distortion']:
-                distortion = Disto(player, drive=random.uniform(0.4, 1),
-                                   slope=0.7)
-            else:
-                distortion = player
-            if self.effectchain['Frequency Shifter']:
-                freqshift = FreqShift(distortion, random.random() * 220)
-            else:
-                freqshift = distortion
-            if self.effectchain['Chorus']:
-                chorus = Chorus(freqshift, depth=random.uniform(1, 5),
-                                feedback=random.random(), bal=0.6)
-            else:
-                chorus = freqshift
-            if self.effectchain['Reverb']:
-                self.output = Freeverb(chorus, size=random.random(),
-                                       damp=random.random(), bal=0.7)
-            else:
-                self.output = chorus
-            if random.random() < 0.5:
-                self.output.out()
-            else:
-                self.output.out(1)
+        self.chooser.execute()
+        sample = self.chooser.output
+        player = SfPlayer(sample.path, loop=False)
+        if self.effectchain['Volume']:
+            player.setMul(random.random())
+        if self.effectchain['Speed']:
+            player.setSpeed(0.5 + random.random()/2)
+        if self.effectchain['Distortion']:
+            distortion = Disto(player, drive=random.uniform(0.4, 1),
+                               slope=0.7)
+        else:
+            distortion = player
+        if self.effectchain['Frequency Shifter']:
+            freqshift = FreqShift(distortion, random.random() * 220)
+        else:
+            freqshift = distortion
+        if self.effectchain['Chorus']:
+            chorus = Chorus(freqshift, depth=random.uniform(1, 5),
+                            feedback=random.random(), bal=0.6)
+        else:
+            chorus = freqshift
+        if self.effectchain['Reverb']:
+            self.output = Freeverb(chorus, size=random.random(),
+                                   damp=random.random(), bal=0.7)
+        else:
+            self.output = chorus
+        if random.random() < 0.5:
+            self.output.out()
+        else:
+            self.output.out(1)
 
     def toggle_effect(self, name, state):
         for key in self.effectchain.keys():
