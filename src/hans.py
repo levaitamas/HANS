@@ -18,6 +18,7 @@ import fnmatch
 import os
 import sys
 import random
+import threading
 
 
 class SeedGen:
@@ -145,7 +146,7 @@ class HansMainFrame(UIBaseClass, wx.Frame):
             self.folderList.Set(dirs)
 
     def enterHyperspace(self, e):
-        doTheWookieeBoogie()
+        threading.Thread(target=doTheWookieeBoogie).start()
 
     def updateFolders(self, e):
         if self.folderList.IsChecked(e.GetInt()):
