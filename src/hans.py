@@ -35,6 +35,59 @@ class Sample:
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
 
+class SigProc:
+    class Variable:
+        def __init__(self, name, value):
+            self.name = name
+            self.value = value
+
+    class Rule:
+        def __init__(self, active, inactive, weight):
+            self.active = active
+            self.inactive = inactive
+            self.weight = weight
+
+    class WeightedValue:
+        def __init__(self, value, weight):
+            self.value = value
+            self.weight = weight
+
+    def execute(self, inputlist, outputlist, rulelist):
+        templist = []
+        for op in outputlist:
+            for sor in rulelist:
+                if op.name == sor.inactive:
+                    for s in inputlist:
+                        if s.name == sor.active:
+                            templist.append(self.WeightedValue(s.value, sor.weight))
+            op.value = self.calcavg(templist)
+            templist = []
+        return outputlist
+
+    def norm(self, variable, min, max):
+        if variable < max and variable > min:
+            return (variable - min) / (max - min)
+        elif variable <= min:
+            return 0
+        else:
+            return 1
+
+    def denorm(self, variable, min, max):
+        if variable:
+            return variable * (max - min) + min
+        return 0
+
+    def aging(self, weight):
+        return 0.5 * weight
+
+    def calcavg(self, sumlist):
+        numerator = sum([l.value * l.weight for l in sumlist])
+        denominator = sum([l.weight for l in sumlist])
+        if (denominator != 0):
+            return (float(numerator) / float(denominator))
+        else:
+            return None
+
 
 class Chooser:
     def __init__(self, seed_gen, sample_root='.'):
