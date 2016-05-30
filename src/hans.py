@@ -35,11 +35,58 @@ class Sample:
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
 
+
 class SigProc:
+    def __init__(self, audioin):
+        self.amp = PeakAmp(audioin)
+        self.yin = Yin(audioin, tolerance=0.2, winsize=1024, cutoff=20)
+        self.cen = Centroid(audioin, 1024)
+        self.rms = Follower(audioin, freq=20)	
+        self.set_inputs()
+        self.set_outputs()
+        self.set_rules()		
+        
+    def execute(self):			
+        self.set_inputs()		
+        self.calcout()
+        print self.outputlist
+        # return parameters with self.denorm()
+    
+    def set_inputs(self):
+        self.inputlist = []
+        self.inputlist.append(self.Variable("yin", self.norm(self.yin.get(), 0, 1000)))
+        self.inputlist.append(self.Variable("cen", self.norm(self.cen.get(), 0, 20000)))
+        self.inputlist.append(self.Variable("rms", self.norm(self.rms.get(), 0, 2)))
+        self.inputlist.append(self.Variable("amp", self.norm(self.amp.get(), 0, 3)))
+        
+    def set_rules(self):
+        self.rulelist = []
+        self.rulelist.append(self.Rule("yin", "speed", 1))
+        self.rulelist.append(self.Rule("yin", "freqshister", 0.8))
+        self.rulelist.append(self.Rule("attackdet", "distortion", 0.7))
+        self.rulelist.append(self.Rule("attackdet", "volume", 0.75))
+        self.rulelist.append(self.Rule("spectrum", "freqshifter", 0.75))
+        self.rulelist.append(self.Rule("amp", "volume", 1))
+        self.rulelist.append(self.Rule("amp", "speed", 0.95))
+        self.rulelist.append(self.Rule("amp", "chorus", 0.4))	
+        
+    def set_outputs(self):
+        self.outputlist = []
+        for id in ['', '2', '3']:
+            self.outputlist.append(self.Variable("volume"+id, 0))
+            self.outputlist.append(self.Variable("speed"+id, 0))
+            self.outputlist.append(self.Variable("distortion"+id, 0))
+            self.outputlist.append(self.Variable("freqshifter"+id, 0))
+            self.outputlist.append(self.Variable("chorus"+id, 0))
+            self.outputlist.append(self.Variable("reverb"+id, 0))
+    
     class Variable:
         def __init__(self, name, value):
             self.name = name
             self.value = value
+
+        def __repr__(self):
+             return str(self.name) + ": " + str(self.value)
 
     class Rule:
         def __init__(self, active, inactive, weight):
@@ -52,17 +99,18 @@ class SigProc:
             self.value = value
             self.weight = weight
 
-    def execute(self, inputlist, outputlist, rulelist):
+    def calcout(self):
         templist = []
-        for op in outputlist:
-            for sor in rulelist:
-                if op.name == sor.inactive:
-                    for s in inputlist:
-                        if s.name == sor.active:
-                            templist.append(self.WeightedValue(s.value, sor.weight))
-            op.value = self.calcavg(templist)
+        for output in self.outputlist:
+            for rule in self.rulelist:
+                if output.name == rule.inactive:
+                    for input in self.inputlist:
+                        if input.name == rule.active:
+                            templist.append(self.WeightedValue(input.value, rule.weight))
+                #else:
+                #    templist.append(self.WeightedValue(output.value, self.aging(output.weight)))
+            output.value = self.calcavg(templist)
             templist = []
-        return outputlist
 
     def norm(self, variable, min, max):
         if variable < max and variable > min:
@@ -252,9 +300,10 @@ def doTheWookieeBoogie():
 
 
 class Modulator:
-    def __init__(self, chooser):
+    def __init__(self, chooser, sigproc):
         assert chooser
         self.chooser = chooser
+        self.sigproc = sigproc
         self.output = None
         # Effect Chain:
         # 'Volume' -> 'Speed' -> 'Distortion'
@@ -263,6 +312,7 @@ class Modulator:
                             'Frequency Shifter': 0, 'Chorus': 0, 'Reverb': 0}
 
     def execute(self):
+        self.sigproc.execute()
         self.chooser.execute()
         sample = self.chooser.output
         player = SfPlayer(sample.path, loop=False)
@@ -309,7 +359,7 @@ if __name__ == "__main__":
                           "to version 0.7.6 or later.")
     # Setup server
     if sys.platform.startswith("win"):
-        server = Server().boot()
+        server = Server(duplex=1).boot()
     else:
         server = Server(audio='jack', jackname='HANS').boot()
     # Uncomment following line to enable debug info
@@ -326,7 +376,8 @@ if __name__ == "__main__":
     seedgen = SeedGen()
     chooser = Chooser(seedgen)
     midiproc = MidiProc()
-    modulator = Modulator(chooser)
+    sigproc = SigProc(Input())
+    modulator = Modulator(chooser, sigproc)
     mediator = Mediator(chooser, modulator)
     ##
     # GUI
