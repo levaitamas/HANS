@@ -48,15 +48,15 @@ class SigProc:
         self.rulelist = []
         self.set_inputs()
         self.set_outputs()
-        self.set_rules()		
-        
+        self.set_rules()
+
     def execute(self):
         self.set_inputs()
         self.calcout()
         print datetime.datetime.now()
         print self.outputlist
         # return parameters with self.denorm()
-    
+
     def set_inputs(self):
         self.inputlist = []
         self.inputlist.append(self.Variable("yin", self.norm(self.yin.get(), 0, 1000)))
@@ -65,10 +65,10 @@ class SigProc:
         self.inputlist.append(self.Variable("amp", self.norm(self.amp.get(), 0, 3)))
         print datetime.datetime.now()
         print self.inputlist
-        
+
     def set_rules(self):
         self.rulelist = []
-        for i in xrange(1,3):
+        for i in xrange(1, 3):
             id = str(i)
             self.rulelist.append(self.Rule("vol"+id, "vol", 1.0/i))
             self.rulelist.append(self.Rule("spe"+id, "spe", 1.0/i))
@@ -86,8 +86,8 @@ class SigProc:
         self.rulelist.append(self.Rule("amp", "cho", 0.40))
         print datetime.datetime.now()
         print self.rulelist
-    
-    # 'Volume', 'Speed', 'Distortion', 'Frequency Shifter', 'Chorus', 'Reverb'   
+
+    # 'Volume', 'Speed', 'Distortion', 'Frequency Shifter', 'Chorus', 'Reverb'
     def set_outputs(self):
         self.outputlist = []
         for id in ['', '1', '2']:
@@ -99,14 +99,14 @@ class SigProc:
             self.outputlist.append(self.Variable("rev"+id, 0))
         print datetime.datetime.now()
         print self.outputlist
-    
+
     class Variable:
         def __init__(self, name, value):
             self.name = name
             self.value = value
 
         def __repr__(self):
-             return "\n" + str(self.name) + ": " + str(self.value)
+            return "\n" + str(self.name) + ": " + str(self.value)
 
     class Rule:
         def __init__(self, active, inactive, weight):
@@ -115,7 +115,9 @@ class SigProc:
             self.weight = weight
 
         def __repr__(self):
-             return "\n" + str(self.active) + " effects " + str(self.inactive) + " with " + str(self.weight)
+            return ("\n" + str(self.active) +
+                    " effects " + str(self.inactive) +
+                    " with " + str(self.weight))
 
     class WeightedValue:
         def __init__(self, value, weight):
@@ -123,7 +125,8 @@ class SigProc:
             self.weight = weight
 
         def __repr__(self):
-             return "\n" +  str(self.value) + " with " + str(self.weight)
+            return ("\n" + str(self.value) +
+                    " with " + str(self.weight))
 
     def calcout(self):
         templist = []
@@ -132,10 +135,14 @@ class SigProc:
                 if output.name == rule.inactive:
                     for input in self.inputlist:
                         if input.name == rule.active:
-                            templist.append(self.WeightedValue(input.value, rule.weight))
+                            templist.append(
+                                self.WeightedValue(input.value,
+                                                   rule.weight))
                     for outputold in self.outputlist:
                         if outputold.name == rule.active:
-                            templist.append(self.WeightedValue(outputold.value, rule.weight))
+                            templist.append(
+                                self.WeightedValue(outputold.value,
+                                                   rule.weight))
             if len(templist) != 0:
                 output.value = self.calcavg(templist)
                 self.aging(output)
@@ -157,7 +164,7 @@ class SigProc:
     def aging(self, variable):
         for output in self.outputlist:
             if output.name[:-1] == variable.name:
-                if output.name[-1:] == "1":                    
+                if output.name[-1:] == "1":
                     output.value = variable.value
                 elif output.name[-1:] == "2":
                     output.value = 0.5 * variable.value
@@ -328,7 +335,7 @@ def handle_midievent(status, note, velocity):
 
 
 def doTheWookieeBoogie():
-    for _ in range(random.randint(42, 64)):
+    for _ in xrange(random.randint(42, 64)):
         handle_midievent(145, 36, 125)
         time.sleep(0.07 + random.random()/5)
 
@@ -342,8 +349,21 @@ class Modulator:
         # Effect Chain:
         # 'Volume' -> 'Speed' -> 'Distortion'
         # -> 'Frequency Shifter' -> 'Chorus' -> 'Reverb'
-        self.effectchain = {'Volume': 0, 'Speed': 0, 'Distortion': 0,
-                            'Frequency Shifter': 0, 'Chorus': 0, 'Reverb': 0}
+
+        # Effect parameters:
+        # 'Volume-param': between 0 and 1
+        # 'Speed-param': 1 - original; 0> - reverse; 0-1 slow; 1< - fast
+        # 'Distortion-param': between 0 and 1
+        # 'FS-param': amount of shifting in Hertz
+        # 'Chorus-param': between 0 and 5
+        # 'Reverb-param': between 0 and 1
+
+        self.effectchain = {'Volume': 0, 'Volume-param': 0,
+                            'Speed': 0, 'Speed-param': 0,
+                            'Distortion': 0, 'Distortion-param': 0,
+                            'Frequency Shifter': 0, 'FS-param': 0,
+                            'Chorus': 0, 'Chorus-param': 0,
+                            'Reverb': 0, 'Reverb-param': 0}
 
     def execute(self):
         self.sigproc.execute()
@@ -351,25 +371,36 @@ class Modulator:
         sample = self.chooser.output
         player = SfPlayer(sample.path, loop=False)
         if self.effectchain['Volume']:
-            player.setMul(random.random())
+            player.setMul(self.effectchain['Volume-param'] or
+                          random.random())
         if self.effectchain['Speed']:
-            player.setSpeed(0.5 + random.random()/2)
+            player.setSpeed(self.effectchain['Speed-param'] or
+                            (0.5 + random.random()/2))
         if self.effectchain['Distortion']:
-            distortion = Disto(player, drive=random.uniform(0.4, 1),
+            distortion = Disto(player,
+                               drive=self.effectchain['Distortion-param'] or
+                               random.uniform(0.4, 1),
                                slope=0.7)
         else:
             distortion = player
         if self.effectchain['Frequency Shifter']:
-            freqshift = FreqShift(distortion, random.random() * 220)
+            freqshift = FreqShift(distortion,
+                                  self.effectchain['FS-param'] or
+                                  random.random() * 220)
         else:
             freqshift = distortion
         if self.effectchain['Chorus']:
-            chorus = Chorus(freqshift, depth=random.uniform(1, 5),
-                            feedback=random.random(), bal=0.6)
+            chorus = Chorus(freqshift,
+                            depth=self.effectchain['Chorus-param'] or
+                            random.uniform(1, 5),
+                            feedback=random.random(),
+                            bal=0.6)
         else:
             chorus = freqshift
         if self.effectchain['Reverb']:
-            self.output = Freeverb(chorus, size=random.random(),
+            self.output = Freeverb(chorus,
+                                   size=self.effectchain['Reverb-param'] or
+                                   random.random(),
                                    damp=random.random(), bal=0.7)
         else:
             self.output = chorus
@@ -395,7 +426,7 @@ if __name__ == "__main__":
     if sys.platform.startswith("win"):
         server = Server(duplex=1).boot()
     else:
-        server = Server(audio='jack', jackname='HANS').boot()
+        server = Server(duplex=1, audio='jack', jackname='HANS').boot()
     # Uncomment following line to enable debug info
     # server.setVerbosity(8)
     # Set MIDI input
