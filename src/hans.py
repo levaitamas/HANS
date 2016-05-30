@@ -19,6 +19,7 @@ import os
 import sys
 import random
 import threading
+import datetime
 
 
 class SeedGen:
@@ -41,14 +42,18 @@ class SigProc:
         self.amp = PeakAmp(audioin)
         self.yin = Yin(audioin, tolerance=0.2, winsize=1024, cutoff=20)
         self.cen = Centroid(audioin, 1024)
-        self.rms = Follower(audioin, freq=20)	
+        self.rms = Follower(audioin, freq=20)
+        self.inputlist = []
+        self.outputlist = []
+        self.rulelist = []
         self.set_inputs()
         self.set_outputs()
         self.set_rules()		
         
-    def execute(self):			
-        self.set_inputs()		
+    def execute(self):
+        self.set_inputs()
         self.calcout()
+        print datetime.datetime.now()
         print self.outputlist
         # return parameters with self.denorm()
     
@@ -58,27 +63,42 @@ class SigProc:
         self.inputlist.append(self.Variable("cen", self.norm(self.cen.get(), 0, 20000)))
         self.inputlist.append(self.Variable("rms", self.norm(self.rms.get(), 0, 2)))
         self.inputlist.append(self.Variable("amp", self.norm(self.amp.get(), 0, 3)))
+        print datetime.datetime.now()
+        print self.inputlist
         
     def set_rules(self):
         self.rulelist = []
-        self.rulelist.append(self.Rule("yin", "speed", 1))
-        self.rulelist.append(self.Rule("yin", "freqshister", 0.8))
-        self.rulelist.append(self.Rule("attackdet", "distortion", 0.7))
-        self.rulelist.append(self.Rule("attackdet", "volume", 0.75))
-        self.rulelist.append(self.Rule("spectrum", "freqshifter", 0.75))
-        self.rulelist.append(self.Rule("amp", "volume", 1))
-        self.rulelist.append(self.Rule("amp", "speed", 0.95))
-        self.rulelist.append(self.Rule("amp", "chorus", 0.4))	
-        
+        for i in xrange(1,3):
+            id = str(i)
+            self.rulelist.append(self.Rule("vol"+id, "vol", 1.0/i))
+            self.rulelist.append(self.Rule("spe"+id, "spe", 1.0/i))
+            self.rulelist.append(self.Rule("dis"+id, "dis", 1.0/i))
+            self.rulelist.append(self.Rule("fre"+id, "fre", 1.0/i))
+            self.rulelist.append(self.Rule("cho"+id, "cho", 1.0/i))
+            self.rulelist.append(self.Rule("rev"+id, "rev", 1.0/i))
+        self.rulelist.append(self.Rule("yin", "spe", 1.00))
+        self.rulelist.append(self.Rule("yin", "fre", 0.80))
+        self.rulelist.append(self.Rule("cen", "spe", 0.90))
+        self.rulelist.append(self.Rule("cen", "fre", 0.70))
+        self.rulelist.append(self.Rule("rms", "fre", 0.75))
+        self.rulelist.append(self.Rule("amp", "vol", 1.00))
+        self.rulelist.append(self.Rule("amp", "spe", 0.95))
+        self.rulelist.append(self.Rule("amp", "cho", 0.40))
+        print datetime.datetime.now()
+        print self.rulelist
+    
+    # 'Volume', 'Speed', 'Distortion', 'Frequency Shifter', 'Chorus', 'Reverb'   
     def set_outputs(self):
         self.outputlist = []
-        for id in ['', '2', '3']:
-            self.outputlist.append(self.Variable("volume"+id, 0))
-            self.outputlist.append(self.Variable("speed"+id, 0))
-            self.outputlist.append(self.Variable("distortion"+id, 0))
-            self.outputlist.append(self.Variable("freqshifter"+id, 0))
-            self.outputlist.append(self.Variable("chorus"+id, 0))
-            self.outputlist.append(self.Variable("reverb"+id, 0))
+        for id in ['', '1', '2']:
+            self.outputlist.append(self.Variable("vol"+id, 0))
+            self.outputlist.append(self.Variable("spe"+id, 0))
+            self.outputlist.append(self.Variable("dis"+id, 0))
+            self.outputlist.append(self.Variable("fre"+id, 0))
+            self.outputlist.append(self.Variable("cho"+id, 0))
+            self.outputlist.append(self.Variable("rev"+id, 0))
+        print datetime.datetime.now()
+        print self.outputlist
     
     class Variable:
         def __init__(self, name, value):
@@ -86,7 +106,7 @@ class SigProc:
             self.value = value
 
         def __repr__(self):
-             return str(self.name) + ": " + str(self.value)
+             return "\n" + str(self.name) + ": " + str(self.value)
 
     class Rule:
         def __init__(self, active, inactive, weight):
@@ -94,10 +114,16 @@ class SigProc:
             self.inactive = inactive
             self.weight = weight
 
+        def __repr__(self):
+             return "\n" + str(self.active) + " effects " + str(self.inactive) + " with " + str(self.weight)
+
     class WeightedValue:
         def __init__(self, value, weight):
             self.value = value
             self.weight = weight
+
+        def __repr__(self):
+             return "\n" +  str(self.value) + " with " + str(self.weight)
 
     def calcout(self):
         templist = []
@@ -107,9 +133,12 @@ class SigProc:
                     for input in self.inputlist:
                         if input.name == rule.active:
                             templist.append(self.WeightedValue(input.value, rule.weight))
-                #else:
-                #    templist.append(self.WeightedValue(output.value, self.aging(output.weight)))
-            output.value = self.calcavg(templist)
+                    for outputold in self.outputlist:
+                        if outputold.name == rule.active:
+                            templist.append(self.WeightedValue(outputold.value, rule.weight))
+            if len(templist) != 0:
+                output.value = self.calcavg(templist)
+                self.aging(output)
             templist = []
 
     def norm(self, variable, min, max):
@@ -125,8 +154,13 @@ class SigProc:
             return variable * (max - min) + min
         return 0
 
-    def aging(self, weight):
-        return 0.5 * weight
+    def aging(self, variable):
+        for output in self.outputlist:
+            if output.name[:-1] == variable.name:
+                if output.name[-1:] == "1":                    
+                    output.value = variable.value
+                elif output.name[-1:] == "2":
+                    output.value = 0.5 * variable.value
 
     def calcavg(self, sumlist):
         numerator = sum([l.value * l.weight for l in sumlist])
@@ -134,7 +168,7 @@ class SigProc:
         if (denominator != 0):
             return (float(numerator) / float(denominator))
         else:
-            return None
+            return 0
 
 
 class Chooser:
