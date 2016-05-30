@@ -20,7 +20,7 @@ import sys
 import random
 import threading
 import datetime
-
+import pprint
 
 class SeedGen:
     def __init__(self):
@@ -49,20 +49,32 @@ class SigProc:
         self.set_inputs()
         self.set_outputs()
         self.set_rules()
+        self.output = {}
 
     def execute(self):
         self.set_inputs()
         self.calcout()
-        print datetime.datetime.now()
-        print self.outputlist
-        # return parameters with self.denorm()
+        self.output = {     
+                    'Volume': self.limit(self.outputlist[self.get_output("vol")].value, 0.4),
+                    'Volume-param': self.denorm(self.outputlist[self.get_output("vol")].value, 0.2, 1.0),
+                    'Speed': self.limit(self.outputlist[self.get_output("spe")].value, 0.2),
+                    'Speed-param': random.choice([-1, 1]) * self.denorm(self.outputlist[self.get_output("spe")].value, 0.5, 1.5),
+                    'Distortion': self.limit(self.outputlist[self.get_output("dis")].value, 0.2),
+                    'Distortion-param': self.denorm(self.outputlist[self.get_output("dis")].value, 0.4, 1.0),
+                    'Frequency Shifter': self.limit(self.outputlist[self.get_output("fre")].value, 0.4),
+                    'FS-param': self.denorm(self.outputlist[self.get_output("fre")].value, -2000.0, 8000.0),
+                    'Chorus': self.limit(self.outputlist[self.get_output("cho")].value, 0.2),
+                    'Chorus-param': self.denorm(self.outputlist[self.get_output("cho")].value, 1.0, 5.0),
+                    'Reverb': self.limit(self.outputlist[self.get_output("rev")].value, 0.1),
+                    'Reverb-param': self.denorm(self.outputlist[self.get_output("rev")].value, 0.0, 1.0)
+                  } 
 
     def set_inputs(self):
         self.inputlist = []
-        self.inputlist.append(self.Variable("yin", self.norm(self.yin.get(), 0, 1000)))
-        self.inputlist.append(self.Variable("cen", self.norm(self.cen.get(), 0, 20000)))
-        self.inputlist.append(self.Variable("rms", self.norm(self.rms.get(), 0, 2)))
-        self.inputlist.append(self.Variable("amp", self.norm(self.amp.get(), 0, 3)))
+        self.inputlist.append(self.Variable("yin", self.norm(self.yin.get(), 0, 400)))
+        self.inputlist.append(self.Variable("cen", self.norm(self.cen.get(), 0, 6000)))
+        self.inputlist.append(self.Variable("rms", self.norm(self.rms.get(), 0, 0.6)))
+        self.inputlist.append(self.Variable("amp", self.norm(self.amp.get(), 0, 1)))
         print datetime.datetime.now()
         print self.inputlist
 
@@ -76,18 +88,33 @@ class SigProc:
             self.rulelist.append(self.Rule("fre"+id, "fre", 1.0/i))
             self.rulelist.append(self.Rule("cho"+id, "cho", 1.0/i))
             self.rulelist.append(self.Rule("rev"+id, "rev", 1.0/i))
-        self.rulelist.append(self.Rule("yin", "spe", 1.00))
+
+        self.rulelist.append(self.Rule("yin", "spe", 2.00))
+        self.rulelist.append(self.Rule("yin", "dis", 0.70))
         self.rulelist.append(self.Rule("yin", "fre", 0.80))
+        self.rulelist.append(self.Rule("yin", "cho", 0.95))
+        self.rulelist.append(self.Rule("yin", "rev", 0.95))
+
+        self.rulelist.append(self.Rule("cen", "vol", 0.90))        
         self.rulelist.append(self.Rule("cen", "spe", 0.90))
-        self.rulelist.append(self.Rule("cen", "fre", 0.70))
-        self.rulelist.append(self.Rule("rms", "fre", 0.75))
+        self.rulelist.append(self.Rule("cen", "dis", 0.90))
+        self.rulelist.append(self.Rule("cen", "fre", 0.60))
+        self.rulelist.append(self.Rule("cen", "cho", 0.90))
+        self.rulelist.append(self.Rule("cen", "rev", 0.95))
+
+        self.rulelist.append(self.Rule("rms", "vol", 1.00)) 
+        self.rulelist.append(self.Rule("rms", "dis", 0.8)) 
+        self.rulelist.append(self.Rule("rms", "fre", 0.75)) 
+        self.rulelist.append(self.Rule("rms", "cho", 0.8)) 
+        self.rulelist.append(self.Rule("rms", "rev", 0.6))
+
         self.rulelist.append(self.Rule("amp", "vol", 1.00))
         self.rulelist.append(self.Rule("amp", "spe", 0.95))
-        self.rulelist.append(self.Rule("amp", "cho", 0.40))
+        self.rulelist.append(self.Rule("amp", "dis", 0.8)) 
+        self.rulelist.append(self.Rule("amp", "cho", 0.70))
         print datetime.datetime.now()
         print self.rulelist
-
-    # 'Volume', 'Speed', 'Distortion', 'Frequency Shifter', 'Chorus', 'Reverb'
+    
     def set_outputs(self):
         self.outputlist = []
         for id in ['', '1', '2']:
@@ -99,6 +126,12 @@ class SigProc:
             self.outputlist.append(self.Variable("rev"+id, 0))
         print datetime.datetime.now()
         print self.outputlist
+
+    def get_output(self, name):
+        for output in self.outputlist:
+            if output.name == name:
+                return self.outputlist.index(output)
+        return None
 
     class Variable:
         def __init__(self, name, value):
@@ -160,6 +193,12 @@ class SigProc:
         if variable:
             return variable * (max - min) + min
         return 0
+
+    def limit(self, variable, limit):
+        if variable >= limit:
+            return 1
+        else:
+            return 0
 
     def aging(self, variable):
         for output in self.outputlist:
@@ -343,6 +382,7 @@ def doTheWookieeBoogie():
 class Modulator:
     def __init__(self, chooser, sigproc):
         assert chooser
+        assert sigproc
         self.chooser = chooser
         self.sigproc = sigproc
         self.output = None
@@ -367,6 +407,10 @@ class Modulator:
 
     def execute(self):
         self.sigproc.execute()
+        self.effectchain = self.sigproc.output
+        pp = pprint.PrettyPrinter(indent=4)
+        print datetime.datetime.now()
+        pp.pprint(self.effectchain)
         self.chooser.execute()
         sample = self.chooser.output
         player = SfPlayer(sample.path, loop=False)
