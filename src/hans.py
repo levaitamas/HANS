@@ -22,6 +22,7 @@ import threading
 import datetime
 import pprint
 
+
 class SeedGen:
     def __init__(self):
         self.output = self.execute()
@@ -54,20 +55,20 @@ class SigProc:
     def execute(self):
         self.set_inputs()
         self.calcout()
-        self.output = {     
-                    'Volume': self.limit(self.outputlist[self.get_output("vol")].value, 0.4),
-                    'Volume-param': self.denorm(self.outputlist[self.get_output("vol")].value, 0.2, 1.0),
-                    'Speed': self.limit(self.outputlist[self.get_output("spe")].value, 0.2),
-                    'Speed-param': random.choice([-1, 1]) * self.denorm(self.outputlist[self.get_output("spe")].value, 0.5, 1.5),
-                    'Distortion': self.limit(self.outputlist[self.get_output("dis")].value, 0.2),
-                    'Distortion-param': self.denorm(self.outputlist[self.get_output("dis")].value, 0.4, 1.0),
-                    'Frequency Shifter': self.limit(self.outputlist[self.get_output("fre")].value, 0.4),
-                    'FS-param': self.denorm(self.outputlist[self.get_output("fre")].value, -2000.0, 8000.0),
-                    'Chorus': self.limit(self.outputlist[self.get_output("cho")].value, 0.2),
-                    'Chorus-param': self.denorm(self.outputlist[self.get_output("cho")].value, 1.0, 5.0),
-                    'Reverb': self.limit(self.outputlist[self.get_output("rev")].value, 0.1),
-                    'Reverb-param': self.denorm(self.outputlist[self.get_output("rev")].value, 0.0, 1.0)
-                  } 
+        self.output = {
+            'Volume': self.limit(self.outputlist[self.get_output("vol")].value, 0.4),
+            'Volume-param': self.denorm(self.outputlist[self.get_output("vol")].value, 0.2, 1.0),
+            'Speed': self.limit(self.outputlist[self.get_output("spe")].value, 0.2),
+            'Speed-param': random.choice([-1, 1]) * self.denorm(self.outputlist[self.get_output("spe")].value, 0.5, 1.5),
+            'Distortion': self.limit(self.outputlist[self.get_output("dis")].value, 0.2),
+            'Distortion-param': self.denorm(self.outputlist[self.get_output("dis")].value, 0.4, 1.0),
+            'Frequency Shifter': self.limit(self.outputlist[self.get_output("fre")].value, 0.4),
+            'FS-param': self.denorm(self.outputlist[self.get_output("fre")].value, -2000.0, 8000.0),
+            'Chorus': self.limit(self.outputlist[self.get_output("cho")].value, 0.2),
+            'Chorus-param': self.denorm(self.outputlist[self.get_output("cho")].value, 1.0, 5.0),
+            'Reverb': self.limit(self.outputlist[self.get_output("rev")].value, 0.1),
+            'Reverb-param': self.denorm(self.outputlist[self.get_output("rev")].value, 0.0, 1.0)
+        }
 
     def set_inputs(self):
         self.inputlist = []
@@ -95,26 +96,26 @@ class SigProc:
         self.rulelist.append(self.Rule("yin", "cho", 0.95))
         self.rulelist.append(self.Rule("yin", "rev", 0.95))
 
-        self.rulelist.append(self.Rule("cen", "vol", 0.90))        
+        self.rulelist.append(self.Rule("cen", "vol", 0.90))
         self.rulelist.append(self.Rule("cen", "spe", 0.90))
         self.rulelist.append(self.Rule("cen", "dis", 0.90))
         self.rulelist.append(self.Rule("cen", "fre", 0.60))
         self.rulelist.append(self.Rule("cen", "cho", 0.90))
         self.rulelist.append(self.Rule("cen", "rev", 0.95))
 
-        self.rulelist.append(self.Rule("rms", "vol", 1.00)) 
-        self.rulelist.append(self.Rule("rms", "dis", 0.8)) 
-        self.rulelist.append(self.Rule("rms", "fre", 0.75)) 
-        self.rulelist.append(self.Rule("rms", "cho", 0.8)) 
+        self.rulelist.append(self.Rule("rms", "vol", 1.00))
+        self.rulelist.append(self.Rule("rms", "dis", 0.8))
+        self.rulelist.append(self.Rule("rms", "fre", 0.75))
+        self.rulelist.append(self.Rule("rms", "cho", 0.8))
         self.rulelist.append(self.Rule("rms", "rev", 0.6))
 
         self.rulelist.append(self.Rule("amp", "vol", 1.00))
         self.rulelist.append(self.Rule("amp", "spe", 0.95))
-        self.rulelist.append(self.Rule("amp", "dis", 0.8)) 
+        self.rulelist.append(self.Rule("amp", "dis", 0.8))
         self.rulelist.append(self.Rule("amp", "cho", 0.70))
         print datetime.datetime.now()
         print self.rulelist
-    
+
     def set_outputs(self):
         self.outputlist = []
         for id in ['', '1', '2']:
@@ -218,12 +219,13 @@ class SigProc:
 
 
 class Chooser:
-    def __init__(self, seed_gen, sample_root='.'):
+    def __init__(self, seed_gen, sample_root='.', enable_ai=True):
         assert seed_gen
         self.seedgen = seed_gen
         self.sample_root = sample_root
         self.sample_list = []
         self.num_of_samples = 0
+        self.enable_ai = enable_ai
         self.output = ''
         self.execute()
 
@@ -248,6 +250,9 @@ class Chooser:
         self.sample_list = [sample for sample in self.sample_list if
                             os.path.dirname(sample.path) != folder]
         self.num_of_samples = len(self.sample_list)
+
+    def toggle_ai(self, state):
+        self.enable_ai = state
 
 
 class Mediator(object):
@@ -312,6 +317,11 @@ class HansMainFrame(UIBaseClass, wx.Frame):
         self.soloButton.Bind(wx.EVT_BUTTON, self.enterHyperspace)
         rightBox.Add(self.soloButton, flag=wx.EXPAND)
 
+        self.aiList = wx.CheckListBox(panel)
+        self.aiList.Set(['Disable Modulator AI', 'Disable sample Chooser AI'])
+        self.aiList.Bind(wx.EVT_CHECKLISTBOX, self.updateAIs)
+        rightBox.Add(self.aiList, flag=wx.EXPAND)
+
         panelBox = wx.BoxSizer(wx.HORIZONTAL)
         panelBox.Add(leftBox, flag=wx.EXPAND)
         panelBox.Add(rightBox, flag=wx.EXPAND)
@@ -339,14 +349,25 @@ class HansMainFrame(UIBaseClass, wx.Frame):
             folder = os.path.join(self.mediator.chooser.sample_root,
                                   e.GetString())
             self.mediator.chooser.remove_samples_from_folder(folder)
-            pass
 
     def updateModulators(self, e):
         if self.modulatorList.IsChecked(e.GetInt()):
             self.mediator.modulator.toggle_effect(e.GetString(), 1)
         else:
             self.mediator.modulator.toggle_effect(e.GetString(), 0)
-            pass
+
+    def updateAIs(self, e):
+        id = e.GetInt()
+        if self.aiList.IsChecked(id):
+            if id == 0:
+                self.mediator.modulator.toggle_ai(False)
+            else:
+                self.mediator.modulator.toggle_ai(False)
+        else:
+            if id == 0:
+                self.mediator.modulator.toggle_ai(True)
+            else:
+                self.mediator.modulator.toggle_ai(True)
 
 
 class MidiProc:
@@ -380,12 +401,13 @@ def doTheWookieeBoogie():
 
 
 class Modulator:
-    def __init__(self, chooser, sigproc):
+    def __init__(self, chooser, sigproc, enable_ai=True):
         assert chooser
         assert sigproc
         self.chooser = chooser
         self.sigproc = sigproc
         self.output = None
+        self.enable_ai = enable_ai
         # Effect Chain:
         # 'Volume' -> 'Speed' -> 'Distortion'
         # -> 'Frequency Shifter' -> 'Chorus' -> 'Reverb'
@@ -406,11 +428,12 @@ class Modulator:
                             'Reverb': 0, 'Reverb-param': 0}
 
     def execute(self):
-        self.sigproc.execute()
-        self.effectchain = self.sigproc.output
-        pp = pprint.PrettyPrinter(indent=4)
-        print datetime.datetime.now()
-        pp.pprint(self.effectchain)
+        if self.enable_ai:
+            self.sigproc.execute()
+            self.effectchain = self.sigproc.output
+            print datetime.datetime.now()
+            pp = pprint.PrettyPrinter(indent=4)
+            pp.pprint(self.effectchain)
         self.chooser.execute()
         sample = self.chooser.output
         player = SfPlayer(sample.path, loop=False)
@@ -457,6 +480,9 @@ class Modulator:
         for key in self.effectchain.keys():
             if key == name:
                 self.effectchain[key] = state
+
+    def toggle_ai(self, state):
+        self.enable_ai = state
 
 
 if __name__ == "__main__":
