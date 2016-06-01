@@ -40,10 +40,14 @@ class Sample:
 
 class SigProc:
     def __init__(self, audioin):
-        self.amp = PeakAmp(audioin)
         self.yin = Yin(audioin, tolerance=0.2, winsize=1024, cutoff=20)
         self.cen = Centroid(audioin, 1024)
         self.rms = Follower(audioin, freq=20)
+        self.amp = PeakAmp(audioin)
+        self.yinlim = 400
+        self.cenlim = 6000
+        self.rmslim = 0.6
+        self.amplim = 1
         self.inputlist = []
         self.outputlist = []
         self.rulelist = []
@@ -51,6 +55,7 @@ class SigProc:
         self.set_outputs()
         self.set_rules()
         self.output = {}
+        self.output2 = {}
 
     def execute(self):
         self.set_inputs()
@@ -70,14 +75,29 @@ class SigProc:
             'Reverb-param': self.denorm(self.outputlist[self.get_output("rev")].value, 0.0, 1.0)
         }
 
+        self.output2 = {
+            'Human': self.limit(self.outputlist[self.get_output("Human")].value, 0.5),
+            'Machine': self.limit(self.outputlist[self.get_output("Machine")].value, 0.5),
+            'Music': self.limit(self.outputlist[self.get_output("Music")].value, 0.5),
+            'Nature': self.limit(self.outputlist[self.get_output("Nature")].value, 0.5),
+            'Beep': self.limit(self.outputlist[self.get_output("Beep")].value, 0.5),
+            'Other': self.limit(self.outputlist[self.get_output("Other")].value, 0.5),
+        }
+
     def set_inputs(self):
         self.inputlist = []
-        self.inputlist.append(self.Variable("yin", self.norm(self.yin.get(), 0, 400)))
-        self.inputlist.append(self.Variable("cen", self.norm(self.cen.get(), 0, 6000)))
-        self.inputlist.append(self.Variable("rms", self.norm(self.rms.get(), 0, 0.6)))
-        self.inputlist.append(self.Variable("amp", self.norm(self.amp.get(), 0, 1)))
+        self.inputlist.append(self.Variable("yin", self.norm(self.yin.get(), 0, self.yinlim)))
+        self.inputlist.append(self.Variable("cen", self.norm(self.cen.get(), 0, self.cenlim)))
+        self.inputlist.append(self.Variable("rms", self.norm(self.rms.get(), 0, self.rmslim)))
+        self.inputlist.append(self.Variable("amp", self.norm(self.amp.get(), 0, self.amplim)))
         print datetime.datetime.now()
         print self.inputlist
+
+    def set_imputlims(self, yinlim, cenlim, rmslim, amplim):
+        self.yinlim = yinlim
+        self.cenlim = cenlim
+        self.rmslim = rmslim
+        self.amplim = amplim
 
     def set_rules(self):
         self.rulelist = []
@@ -113,6 +133,19 @@ class SigProc:
         self.rulelist.append(self.Rule("amp", "spe", 0.95))
         self.rulelist.append(self.Rule("amp", "dis", 0.8))
         self.rulelist.append(self.Rule("amp", "cho", 0.70))
+        
+        self.rulelist.append(self.Rule("amp", "Human", 0.70))
+        self.rulelist.append(self.Rule("yin", "Human", 0.70))
+        self.rulelist.append(self.Rule("amp", "Machine", 0.70))
+        self.rulelist.append(self.Rule("yin", "Machine", 0.70))
+        self.rulelist.append(self.Rule("amp", "Music", 0.70))
+        self.rulelist.append(self.Rule("yin", "Music", 0.70))
+        self.rulelist.append(self.Rule("amp", "Nature", 0.70))
+        self.rulelist.append(self.Rule("yin", "Nature", 0.70))
+        self.rulelist.append(self.Rule("amp", "Beep", 0.70))
+        self.rulelist.append(self.Rule("yin", "Beep", 0.70))
+        self.rulelist.append(self.Rule("amp", "Other", 0.70))
+        self.rulelist.append(self.Rule("yin", "Other", 0.70))
         print datetime.datetime.now()
         print self.rulelist
 
@@ -125,6 +158,12 @@ class SigProc:
             self.outputlist.append(self.Variable("fre"+id, 0))
             self.outputlist.append(self.Variable("cho"+id, 0))
             self.outputlist.append(self.Variable("rev"+id, 0))
+        self.outputlist.append(self.Variable("Other", 0))
+        self.outputlist.append(self.Variable("Music", 0))
+        self.outputlist.append(self.Variable("Human", 0))
+        self.outputlist.append(self.Variable("Nature", 0))
+        self.outputlist.append(self.Variable("Beep", 0))
+        self.outputlist.append(self.Variable("Machine", 0))
         print datetime.datetime.now()
         print self.outputlist
 
@@ -256,9 +295,10 @@ class Chooser:
 
 
 class Mediator(object):
-    def __init__(self, chooser=None, modulator=None):
+    def __init__(self, chooser=None, modulator=None, sigproc=None):
         self.chooser = chooser
         self.modulator = modulator
+        self.sigproc = sigproc
 
     def set_chooser(self, chooser):
         assert chooser
@@ -267,6 +307,10 @@ class Mediator(object):
     def set_modulator(self, modulator):
         assert modulator
         self.modulator = modulator
+    
+    def set_sigproc(self, sigproc):
+        assert sigproc
+        self.sigproc = sigproc
 
 
 class UIBaseClass(object):
@@ -285,7 +329,7 @@ class HansMainFrame(UIBaseClass, wx.Frame):
                           parent,
                           title='HANS',
                           size=(600, 300))
-        self.SetMinSize(wx.Size(600, 300))
+        self.SetMinSize(wx.Size(600, 450))
         self.initUI()
         self.Centre()
         self.Show()
@@ -325,7 +369,53 @@ class HansMainFrame(UIBaseClass, wx.Frame):
         panelBox = wx.BoxSizer(wx.HORIZONTAL)
         panelBox.Add(leftBox, flag=wx.EXPAND)
         panelBox.Add(rightBox, flag=wx.EXPAND)
-        panel.SetSizer(panelBox)
+        panel.SetSizer(panelBox)        
+        
+        self.ampslide = wx.Slider(panel, -1, 100.0, 0.0, 500.0,            
+            size=(150, -1),
+            pos=(400,200),
+            name=('ampslider'),
+            style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
+        self.rmsslide = wx.Slider(panel, -1, 70.0, 0.0, 200.0,
+            size=(150, -1),
+            pos=(400,250),
+            name=('rmsslider'),
+            style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
+        self.censlide = wx.Slider(panel, -1, 6000, 0.0, 10000.0,
+            size=(150, -1),
+            pos=(400,300),
+            name=('censlider'),
+            style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
+        self.yinslide = wx.Slider(panel, -1, 400, 0.0, 1000.0,
+            size=(150, -1),
+            pos=(400,350),
+            name=('yinslider'),
+            style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
+        self.Bind(wx.EVT_SLIDER, self.sliderUpdate)
+
+        self.amplab = wx.StaticText(panel, -1, "AMP", 
+            pos=(360,200),
+            size=(30, -1),
+            style=0, name=('amplab'))
+        self.rmslab = wx.StaticText(panel, -1, "RMS", 
+            pos=(360,250),
+            size=(30, -1),
+            style=0, name=('rmslab'))
+        self.cenlab = wx.StaticText(panel, -1, "CEN", 
+            pos=(360,300),
+            size=(30, -1),
+            style=0, name=('cenlab'))
+        self.yinlab = wx.StaticText(panel, -1, "YIN\nYAN", 
+            pos=(360,350),
+            size=(30, -1),
+            style=0, name=('yinlab'))
+
+    def sliderUpdate(self, event):
+        amppos = self.ampslide.GetValue()/100.0
+        rmspos = self.rmsslide.GetValue()/100.0
+        cenpos = self.censlide.GetValue()
+        yinpos = self.yinslide.GetValue()
+        self.mediator.sigproc.set_imputlims(yinpos, cenpos, rmspos, amppos)
 
     def updateSampleRootDir(self, e):
         dirs = []
@@ -513,7 +603,7 @@ if __name__ == "__main__":
     midiproc = MidiProc()
     sigproc = SigProc(Input())
     modulator = Modulator(chooser, sigproc)
-    mediator = Mediator(chooser, modulator)
+    mediator = Mediator(chooser, modulator, sigproc)
     ##
     # GUI
     app = wx.App()
