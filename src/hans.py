@@ -37,7 +37,6 @@ class Sample:
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
 
-
 class SigProc:
     def __init__(self, audioin):
         self.yin = Yin(audioin, tolerance=0.2, winsize=1024, cutoff=20)
