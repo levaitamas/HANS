@@ -9,8 +9,7 @@ __pycache__/
 #Sound
 *.aif
 *.aiff
-[Ss]ample/
-[Ss]amples/
+*[Ss]ample*/
 
 #LaTeX
 *.aux
