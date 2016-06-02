@@ -44,9 +44,9 @@ class Sample:
 
 class SigProc:
     def __init__(self, audioin):
-        self.yin = Yin(audioin, tolerance=0.2, winsize=1024, cutoff=20)
-        self.cen = Centroid(audioin, 1024)
-        self.rms = Follower(audioin, freq=20)
+        self.yin = Yin(audioin)
+        self.cen = Centroid(audioin)
+        self.rms = Follower(audioin)
         self.amp = PeakAmp(audioin)
         self.yinlim = 400
         self.cenlim = 6000
@@ -68,7 +68,7 @@ class SigProc:
             'Volume': self.limit(self.outputlist[self.get_output("vol")].value, 0.4),
             'Volume-param': self.denorm(self.outputlist[self.get_output("vol")].value, 0.2, 1.0),
             'Speed': self.limit(self.outputlist[self.get_output("spe")].value, 0.2),
-            'Speed-param': random.choice([-1, 1]) * self.denorm(self.outputlist[self.get_output("spe")].value, 0.5, 1.5),
+            'Speed-param': random.choice([-1, 1]) * self.denorm(self.outputlist[self.get_output("spe")].value, 0.2, 1.8),
             'Distortion': self.limit(self.outputlist[self.get_output("dis")].value, 0.2),
             'Distortion-param': self.denorm(self.outputlist[self.get_output("dis")].value, 0.4, 1.0),
             'Frequency Shifter': self.limit(self.outputlist[self.get_output("fre")].value, 0.4),
@@ -80,11 +80,11 @@ class SigProc:
         }
 
         self.output2 = {
-            'Human': self.limit(self.outputlist[self.get_output("Human")].value, 0.5),
-            'Machine': self.limit(self.outputlist[self.get_output("Machine")].value, 0.5),
-            'Music': self.limit(self.outputlist[self.get_output("Music")].value, 0.5),
-            'Nature': self.limit(self.outputlist[self.get_output("Nature")].value, 0.5),
-            'Beep': self.limit(self.outputlist[self.get_output("Beep")].value, 0.5),
+            'Human': self.limit(self.outputlist[self.get_output("Human")].value, 0.42),
+            'Machine': self.limit(self.outputlist[self.get_output("Machine")].value, 0.42),
+            'Music': self.limit(self.outputlist[self.get_output("Music")].value, 0.42),
+            'Nature': self.limit(self.outputlist[self.get_output("Nature")].value, 0.42),
+            'Beep': self.limit(self.outputlist[self.get_output("Beep")].value, 0.42),
             'Other': self.limit(self.outputlist[self.get_output("Other")].value, 0.5),
         }
         print(self.outputlist[self.get_output("Human")].value)
@@ -146,16 +146,19 @@ class SigProc:
         self.rulelist.append(self.Rule("amp", "cho", 0.70))
 
         self.rulelist.append(self.Rule("amp", "Human", 1.0))
-        self.rulelist.append(self.Rule("yin", "Human", 0.70))
-        self.rulelist.append(self.Rule("amp", "Machine", 0.80))
-        self.rulelist.append(self.Rule("yin", "Machine", 0.70))
-        self.rulelist.append(self.Rule("amp", "Music", 0.70))
-        self.rulelist.append(self.Rule("yin", "Music", 0.70))
-        self.rulelist.append(self.Rule("amp", "Nature", 0.70))
-        self.rulelist.append(self.Rule("amp", "Beep", 0.70))
+        self.rulelist.append(self.Rule("yin", "Human", 0.7))
+        self.rulelist.append(self.Rule("cen", "Human", 0.8))
+        self.rulelist.append(self.Rule("amp", "Machine", 0.8))
+        self.rulelist.append(self.Rule("yin", "Machine", 0.7))
+        self.rulelist.append(self.Rule("amp", "Music", 0.7))
+        self.rulelist.append(self.Rule("yin", "Music", 0.7))
+        self.rulelist.append(self.Rule("amp", "Nature", 0.7))
+        self.rulelist.append(self.Rule("cen", "Nature", 0.85))
+        self.rulelist.append(self.Rule("amp", "Beep", 0.7))
         self.rulelist.append(self.Rule("yin", "Beep", 1.0))
-        self.rulelist.append(self.Rule("amp", "Other", 0.70))
-        self.rulelist.append(self.Rule("yin", "Other", 0.30))
+        self.rulelist.append(self.Rule("cen", "Other", 0.7))
+        self.rulelist.append(self.Rule("amp", "Other", 0.7))
+        self.rulelist.append(self.Rule("yin", "Other", 0.3))
         print datetime.datetime.now()
         print self.rulelist
 
@@ -291,8 +294,9 @@ class Chooser:
                 if sample.category in self.sigproc.output2:
                     if self.sigproc.output2[sample.category] == 1:
                         samples.append(sample)
-            if len(samples) > 0:
-                self.output = samples[(self.seedgen.output % len(samples))]
+            has_samples = len(samples)
+            if has_samples > 0:
+                self.output = samples[(self.seedgen.output % has_samples)]
 
     def set_sample_root(self, path):
         if os.path.isdir(path):
