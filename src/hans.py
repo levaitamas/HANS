@@ -37,6 +37,11 @@ class Sample:
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
 
+    def __repr__(self):
+        return ("\n" + self.path.split(os.sep)[-1] +
+                " [" + str(self.category) + "]")
+
+
 class SigProc:
     def __init__(self, audioin):
         self.yin = Yin(audioin, tolerance=0.2, winsize=1024, cutoff=20)
@@ -82,6 +87,13 @@ class SigProc:
             'Beep': self.limit(self.outputlist[self.get_output("Beep")].value, 0.5),
             'Other': self.limit(self.outputlist[self.get_output("Other")].value, 0.5),
         }
+        print(self.outputlist[self.get_output("Human")].value)
+        print(self.outputlist[self.get_output("Machine")].value)
+        print(self.outputlist[self.get_output("Music")].value)
+        print(self.outputlist[self.get_output("Nature")].value)
+        print(self.outputlist[self.get_output("Beep")].value)
+        print(self.outputlist[self.get_output("Other")].value)
+        pprint.pprint(self.output2)
 
     def set_inputs(self):
         self.inputlist = []
@@ -132,19 +144,18 @@ class SigProc:
         self.rulelist.append(self.Rule("amp", "spe", 0.95))
         self.rulelist.append(self.Rule("amp", "dis", 0.8))
         self.rulelist.append(self.Rule("amp", "cho", 0.70))
-        
-        self.rulelist.append(self.Rule("amp", "Human", 0.70))
+
+        self.rulelist.append(self.Rule("amp", "Human", 1.0))
         self.rulelist.append(self.Rule("yin", "Human", 0.70))
-        self.rulelist.append(self.Rule("amp", "Machine", 0.70))
+        self.rulelist.append(self.Rule("amp", "Machine", 0.80))
         self.rulelist.append(self.Rule("yin", "Machine", 0.70))
         self.rulelist.append(self.Rule("amp", "Music", 0.70))
         self.rulelist.append(self.Rule("yin", "Music", 0.70))
         self.rulelist.append(self.Rule("amp", "Nature", 0.70))
-        self.rulelist.append(self.Rule("yin", "Nature", 0.70))
         self.rulelist.append(self.Rule("amp", "Beep", 0.70))
-        self.rulelist.append(self.Rule("yin", "Beep", 0.70))
+        self.rulelist.append(self.Rule("yin", "Beep", 1.0))
         self.rulelist.append(self.Rule("amp", "Other", 0.70))
-        self.rulelist.append(self.Rule("yin", "Other", 0.70))
+        self.rulelist.append(self.Rule("yin", "Other", 0.30))
         print datetime.datetime.now()
         print self.rulelist
 
@@ -257,25 +268,37 @@ class SigProc:
 
 
 class Chooser:
-    def __init__(self, seed_gen, sample_root='.', enable_ai=True):
+    def __init__(self, seed_gen, sigproc,
+                 sample_root='.', enable_ai=True):
         assert seed_gen
+        assert sigproc
+        self.sigproc = sigproc
         self.seedgen = seed_gen
         self.sample_root = sample_root
         self.sample_list = []
         self.num_of_samples = 0
         self.enable_ai = enable_ai
-        self.output = ''
+        self.output = None
         self.execute()
+        # sample categories: {'Human': 0, 'Machines': 0, 'Beep': 0,
+        # 'Nature': 0, 'Music': 0, 'Other': 0}
 
     def execute(self):
         self.seedgen.execute()
         if self.num_of_samples > 0:
-            self.output = self.sample_list[(self.seedgen.output %
-                                            self.num_of_samples)]
+            samples = []
+            for sample in self.sample_list:
+                if sample.category in self.sigproc.output2:
+                    if self.sigproc.output2[sample.category] == 1:
+                        samples.append(sample)
+            if len(samples) > 0:
+                self.output = samples[(self.seedgen.output % len(samples))]
 
     def set_sample_root(self, path):
         if os.path.isdir(path):
             self.sample_root = path
+            self.load_samples_from_folder(path)
+            self.sample_list = list(set(self.sample_list))
 
     def load_samples_from_folder(self, folder):
         for root, dirnames, filenames in os.walk(folder):
@@ -306,7 +329,7 @@ class Mediator(object):
     def set_modulator(self, modulator):
         assert modulator
         self.modulator = modulator
-    
+
     def set_sigproc(self, sigproc):
         assert sigproc
         self.sigproc = sigproc
@@ -368,46 +391,46 @@ class HansMainFrame(UIBaseClass, wx.Frame):
         panelBox = wx.BoxSizer(wx.HORIZONTAL)
         panelBox.Add(leftBox, flag=wx.EXPAND)
         panelBox.Add(rightBox, flag=wx.EXPAND)
-        panel.SetSizer(panelBox)        
-        
-        self.ampslide = wx.Slider(panel, -1, 100.0, 0.0, 500.0,            
-            size=(150, -1),
-            pos=(400,200),
-            name=('ampslider'),
-            style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
+        panel.SetSizer(panelBox)
+
+        self.ampslide = wx.Slider(panel, -1, 100.0, 0.0, 500.0,
+                                  size=(150, -1),
+                                  pos=(400, 200),
+                                  name=('ampslider'),
+                                  style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
         self.rmsslide = wx.Slider(panel, -1, 70.0, 0.0, 200.0,
-            size=(150, -1),
-            pos=(400,250),
-            name=('rmsslider'),
-            style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
+                                  size=(150, -1),
+                                  pos=(400, 250),
+                                  name=('rmsslider'),
+                                  style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
         self.censlide = wx.Slider(panel, -1, 6000, 0.0, 10000.0,
-            size=(150, -1),
-            pos=(400,300),
-            name=('censlider'),
-            style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
+                                  size=(150, -1),
+                                  pos=(400, 300),
+                                  name=('censlider'),
+                                  style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
         self.yinslide = wx.Slider(panel, -1, 400, 0.0, 1000.0,
-            size=(150, -1),
-            pos=(400,350),
-            name=('yinslider'),
-            style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
+                                  size=(150, -1),
+                                  pos=(400, 350),
+                                  name=('yinslider'),
+                                  style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
         self.Bind(wx.EVT_SLIDER, self.sliderUpdate)
 
-        self.amplab = wx.StaticText(panel, -1, "AMP", 
-            pos=(360,200),
-            size=(30, -1),
-            style=0, name=('amplab'))
-        self.rmslab = wx.StaticText(panel, -1, "RMS", 
-            pos=(360,250),
-            size=(30, -1),
-            style=0, name=('rmslab'))
-        self.cenlab = wx.StaticText(panel, -1, "CEN", 
-            pos=(360,300),
-            size=(30, -1),
-            style=0, name=('cenlab'))
-        self.yinlab = wx.StaticText(panel, -1, "YIN\nYAN", 
-            pos=(360,350),
-            size=(30, -1),
-            style=0, name=('yinlab'))
+        self.amplab = wx.StaticText(panel, -1, "AMP",
+                                    pos=(360, 200),
+                                    size=(30, -1),
+                                    style=0, name=('amplab'))
+        self.rmslab = wx.StaticText(panel, -1, "RMS",
+                                    pos=(360, 250),
+                                    size=(30, -1),
+                                    style=0, name=('rmslab'))
+        self.cenlab = wx.StaticText(panel, -1, "CEN",
+                                    pos=(360, 300),
+                                    size=(30, -1),
+                                    style=0, name=('cenlab'))
+        self.yinlab = wx.StaticText(panel, -1, "YIN\nYAN",
+                                    pos=(360, 350),
+                                    size=(30, -1),
+                                    style=0, name=('yinlab'))
 
     def sliderUpdate(self, event):
         amppos = self.ampslide.GetValue()/100.0
@@ -521,10 +544,12 @@ class Modulator:
             self.sigproc.execute()
             self.effectchain = self.sigproc.output
             print datetime.datetime.now()
-            pp = pprint.PrettyPrinter(indent=4)
-            pp.pprint(self.effectchain)
+            pprint.pprint(self.effectchain)
         self.chooser.execute()
         sample = self.chooser.output
+        if sample is None:
+            return
+        print sample
         player = SfPlayer(sample.path, loop=False)
         if self.effectchain['Volume']:
             player.setMul(self.effectchain['Volume-param'] or
@@ -597,10 +622,10 @@ if __name__ == "__main__":
     server.start()
     ##
     # COMPONENTS
-    seedgen = SeedGen()
-    chooser = Chooser(seedgen)
     midiproc = MidiProc()
     sigproc = SigProc(Input())
+    seedgen = SeedGen()
+    chooser = Chooser(seedgen, sigproc)
     modulator = Modulator(chooser, sigproc)
     mediator = Mediator(chooser, modulator, sigproc)
     ##
