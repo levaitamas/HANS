@@ -71,7 +71,7 @@ class SigProc:
             'Speed-param': random.choice([-1, 1]) * self.denorm(self.outputlist[self.get_output("spe")].value, 0.2, 1.8),
             'Distortion': self.limit(self.outputlist[self.get_output("dis")].value, 0.2),
             'Distortion-param': self.denorm(self.outputlist[self.get_output("dis")].value, 0.4, 1.0),
-            'Frequency Shifter': self.limit(self.outputlist[self.get_output("fre")].value, 0.4),
+            'Frequency Shifter': self.limit(self.outputlist[self.get_output("fre")].value, 0.6),
             'FS-param': self.denorm(self.outputlist[self.get_output("fre")].value, -2000.0, 8000.0),
             'Chorus': self.limit(self.outputlist[self.get_output("cho")].value, 0.2),
             'Chorus-param': self.denorm(self.outputlist[self.get_output("cho")].value, 1.0, 5.0),
@@ -123,20 +123,20 @@ class SigProc:
 
         self.rulelist.append(self.Rule("yin", "spe", 2.00))
         self.rulelist.append(self.Rule("yin", "dis", 0.70))
-        self.rulelist.append(self.Rule("yin", "fre", 0.80))
+        self.rulelist.append(self.Rule("yin", "fre", 0.60))
         self.rulelist.append(self.Rule("yin", "cho", 0.95))
         self.rulelist.append(self.Rule("yin", "rev", 0.95))
 
         self.rulelist.append(self.Rule("cen", "vol", 0.90))
         self.rulelist.append(self.Rule("cen", "spe", 0.90))
         self.rulelist.append(self.Rule("cen", "dis", 0.90))
-        self.rulelist.append(self.Rule("cen", "fre", 0.60))
+        self.rulelist.append(self.Rule("cen", "fre", 0.50))
         self.rulelist.append(self.Rule("cen", "cho", 0.90))
         self.rulelist.append(self.Rule("cen", "rev", 0.95))
 
         self.rulelist.append(self.Rule("rms", "vol", 1.00))
         self.rulelist.append(self.Rule("rms", "dis", 0.8))
-        self.rulelist.append(self.Rule("rms", "fre", 0.75))
+        self.rulelist.append(self.Rule("rms", "fre", 0.65))
         self.rulelist.append(self.Rule("rms", "cho", 0.8))
         self.rulelist.append(self.Rule("rms", "rev", 0.6))
 
@@ -283,7 +283,7 @@ class Chooser:
         self.enable_ai = enable_ai
         self.output = None
         self.execute()
-        # sample categories: {'Human': 0, 'Machines': 0, 'Beep': 0,
+        # sample categories: {'Human': 0, 'Machine': 0, 'Beep': 0,
         # 'Nature': 0, 'Music': 0, 'Other': 0}
 
     def execute(self):
@@ -297,8 +297,13 @@ class Chooser:
             has_samples = len(samples)
             if has_samples > 0:
                 self.output = samples[(self.seedgen.output % has_samples)]
+            else:
+                self.output = None
+        else:
+            self.output = None
 
     def set_sample_root(self, path):
+        print("ssr")
         if os.path.isdir(path):
             self.sample_root = path
             self.load_samples_from_folder(path)
@@ -309,6 +314,7 @@ class Chooser:
             for filename in fnmatch.filter(filenames, '*.aiff'):
                 sample_path = os.path.join(root, filename)
                 self.sample_list.append(Sample(sample_path))
+        self.sample_list = list(set(self.sample_list))
         self.num_of_samples = len(self.sample_list)
 
     def remove_samples_from_folder(self, folder):
@@ -450,11 +456,11 @@ class HansMainFrame(UIBaseClass, wx.Frame):
 
     def updateSampleRootDir(self, e):
         dirs = []
-        for root, dirnames, filenames in os.walk(
-                self.folderDirButton.GetPath()):
+        path = self.folderDirButton.GetPath()
+        self.mediator.chooser.set_sample_root(path)
+        for root, dirnames, filenames in os.walk(path):
             for dirname in dirnames:
                 dirs.append(dirname)
-                self.mediator.chooser.set_sample_root(root)
             self.folderList.Set(dirs)
 
     def enterHyperspace(self, e):
