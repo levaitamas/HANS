@@ -350,8 +350,8 @@ class HansMainFrame(UIBaseClass, wx.Frame):
         wx.Frame.__init__(self,
                           parent,
                           title='HANS',
-                          size=(600, 300))
-        self.SetMinSize(wx.Size(600, 450))
+                          size=(700, 550))
+        self.SetMinSize(wx.Size(700, 550))
         self.initUI()
         self.Centre()
         self.Show()
@@ -361,9 +361,11 @@ class HansMainFrame(UIBaseClass, wx.Frame):
         leftBox = wx.BoxSizer(wx.VERTICAL)
         leftBox.SetMinSize(wx.Size(350, 100))
         rightBox = wx.BoxSizer(wx.VERTICAL)
-        rightBox.SetMinSize(wx.Size(250, 100))
+        rightBox.SetMinSize(wx.Size(350, 100))
 
-        self.folderDirButton = wx.DirPickerCtrl(panel, path='.')
+        sample_dir = (os.path.dirname(os.path.realpath(__file__))
+                      + os.sep + 'samples')
+        self.folderDirButton = wx.DirPickerCtrl(panel, path=sample_dir)
         self.folderDirButton.Bind(wx.EVT_DIRPICKER_CHANGED,
                                   self.updateSampleRootDir)
         leftBox.Add(self.folderDirButton, flag=wx.EXPAND)
@@ -371,6 +373,8 @@ class HansMainFrame(UIBaseClass, wx.Frame):
         self.folderList = wx.CheckListBox(panel)
         self.folderList.Bind(wx.EVT_CHECKLISTBOX, self.updateFolders)
         leftBox.Add(self.folderList, 2, flag=wx.EXPAND)
+
+        self.updateSampleRootDir(None)
 
         self.modulatorList = wx.CheckListBox(panel)
         self.modulatorList.Set(['Volume', 'Speed',
@@ -395,42 +399,43 @@ class HansMainFrame(UIBaseClass, wx.Frame):
 
         self.ampslide = wx.Slider(panel, -1, 100.0, 0.0, 500.0,
                                   size=(150, -1),
-                                  pos=(400, 200),
                                   name=('ampslider'),
                                   style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
         self.rmsslide = wx.Slider(panel, -1, 70.0, 0.0, 200.0,
                                   size=(150, -1),
-                                  pos=(400, 250),
                                   name=('rmsslider'),
                                   style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
         self.censlide = wx.Slider(panel, -1, 6000, 0.0, 10000.0,
                                   size=(150, -1),
-                                  pos=(400, 300),
                                   name=('censlider'),
                                   style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
         self.yinslide = wx.Slider(panel, -1, 400, 0.0, 1000.0,
                                   size=(150, -1),
-                                  pos=(400, 350),
                                   name=('yinslider'),
                                   style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
         self.Bind(wx.EVT_SLIDER, self.sliderUpdate)
 
         self.amplab = wx.StaticText(panel, -1, "AMP",
-                                    pos=(360, 200),
                                     size=(30, -1),
                                     style=0, name=('amplab'))
         self.rmslab = wx.StaticText(panel, -1, "RMS",
-                                    pos=(360, 250),
                                     size=(30, -1),
                                     style=0, name=('rmslab'))
         self.cenlab = wx.StaticText(panel, -1, "CEN",
-                                    pos=(360, 300),
                                     size=(30, -1),
                                     style=0, name=('cenlab'))
-        self.yinlab = wx.StaticText(panel, -1, "YIN\nYAN",
-                                    pos=(360, 350),
+        self.yinlab = wx.StaticText(panel, -1, "YIN\tYAN",
                                     size=(30, -1),
                                     style=0, name=('yinlab'))
+
+        rightBox.Add(self.amplab, flag=wx.EXPAND)
+        rightBox.Add(self.ampslide, flag=wx.EXPAND)
+        rightBox.Add(self.rmslab, flag=wx.EXPAND)
+        rightBox.Add(self.rmsslide, flag=wx.EXPAND)
+        rightBox.Add(self.cenlab, flag=wx.EXPAND)
+        rightBox.Add(self.censlide, flag=wx.EXPAND)
+        rightBox.Add(self.yinlab, flag=wx.EXPAND)
+        rightBox.Add(self.yinslide, flag=wx.EXPAND)
 
     def sliderUpdate(self, event):
         amppos = self.ampslide.GetValue()/100.0
