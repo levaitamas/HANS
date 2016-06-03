@@ -51,7 +51,7 @@ class SigProc:
         self.yinlim = 400
         self.cenlim = 6000
         self.rmslim = 0.6
-        self.amplim = 1
+        self.amplim = 0.8
         self.inputlist = []
         self.outputlist = []
         self.rulelist = []
@@ -67,16 +67,16 @@ class SigProc:
         self.output = {
             'Volume': self.limit(self.outputlist[self.get_output("vol")].value, 0.4),
             'Volume-param': self.denorm(self.outputlist[self.get_output("vol")].value, 0.2, 1.0),
-            'Speed': self.limit(self.outputlist[self.get_output("spe")].value, 0.2),
-            'Speed-param': random.choice([-1, 1]) * self.denorm(self.outputlist[self.get_output("spe")].value, 0.2, 1.8),
-            'Distortion': self.limit(self.outputlist[self.get_output("dis")].value, 0.2),
+            'Speed': self.limit(self.outputlist[self.get_output("spe")].value, 0.6),
+            'Speed-param': random.choice([-1, 1]) * self.denorm(self.outputlist[self.get_output("spe")].value, 0.6, 1.4),
+            'Distortion': self.limit(self.outputlist[self.get_output("dis")].value, 0.4),
             'Distortion-param': self.denorm(self.outputlist[self.get_output("dis")].value, 0.4, 1.0),
             'Frequency Shifter': self.limit(self.outputlist[self.get_output("fre")].value, 0.6),
             'FS-param': self.denorm(self.outputlist[self.get_output("fre")].value, -2000.0, 8000.0),
-            'Chorus': self.limit(self.outputlist[self.get_output("cho")].value, 0.2),
-            'Chorus-param': self.denorm(self.outputlist[self.get_output("cho")].value, 1.0, 5.0),
-            'Reverb': self.limit(self.outputlist[self.get_output("rev")].value, 0.1),
-            'Reverb-param': self.denorm(self.outputlist[self.get_output("rev")].value, 0.0, 1.0)
+            'Chorus': self.limit(self.outputlist[self.get_output("cho")].value, 0.4),
+            'Chorus-param': self.denorm(self.outputlist[self.get_output("cho")].value, 1.0, 4.0),
+            'Reverb': self.limit(self.outputlist[self.get_output("rev")].value, 0.4),
+            'Reverb-param': self.denorm(self.outputlist[self.get_output("rev")].value, 0.0, 0.6)
         }
 
         self.output2 = {
@@ -303,7 +303,6 @@ class Chooser:
             self.output = None
 
     def set_sample_root(self, path):
-        print("ssr")
         if os.path.isdir(path):
             self.sample_root = path
             self.load_samples_from_folder(path)
@@ -407,7 +406,7 @@ class HansMainFrame(UIBaseClass, wx.Frame):
         panelBox.Add(rightBox, flag=wx.EXPAND)
         panel.SetSizer(panelBox)
 
-        self.ampslide = wx.Slider(panel, -1, 100.0, 0.0, 500.0,
+        self.ampslide = wx.Slider(panel, -1, 80.0, 0.0, 500.0,
                                   size=(150, -1),
                                   name=('ampslider'),
                                   style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
