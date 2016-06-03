@@ -19,8 +19,8 @@ import os
 import sys
 import random
 import threading
-import datetime
-import pprint
+# import datetime
+# import pprint
 
 
 class SeedGen:
@@ -87,13 +87,13 @@ class SigProc:
             'Beep': self.limit(self.outputlist[self.get_output("Beep")].value, 0.42),
             'Other': self.limit(self.outputlist[self.get_output("Other")].value, 0.5),
         }
-        print(self.outputlist[self.get_output("Human")].value)
-        print(self.outputlist[self.get_output("Machine")].value)
-        print(self.outputlist[self.get_output("Music")].value)
-        print(self.outputlist[self.get_output("Nature")].value)
-        print(self.outputlist[self.get_output("Beep")].value)
-        print(self.outputlist[self.get_output("Other")].value)
-        pprint.pprint(self.output2)
+        # print(self.outputlist[self.get_output("Human")].value)
+        # print(self.outputlist[self.get_output("Machine")].value)
+        # print(self.outputlist[self.get_output("Music")].value)
+        # print(self.outputlist[self.get_output("Nature")].value)
+        # print(self.outputlist[self.get_output("Beep")].value)
+        # print(self.outputlist[self.get_output("Other")].value)
+        # pprint.pprint(self.output2)
 
     def set_inputs(self):
         self.inputlist = []
@@ -101,8 +101,8 @@ class SigProc:
         self.inputlist.append(self.Variable("cen", self.norm(self.cen.get(), 0, self.cenlim)))
         self.inputlist.append(self.Variable("rms", self.norm(self.rms.get(), 0, self.rmslim)))
         self.inputlist.append(self.Variable("amp", self.norm(self.amp.get(), 0, self.amplim)))
-        print datetime.datetime.now()
-        print self.inputlist
+        # print datetime.datetime.now()
+        # print self.inputlist
 
     def set_imputlims(self, yinlim, cenlim, rmslim, amplim):
         self.yinlim = yinlim
@@ -159,8 +159,8 @@ class SigProc:
         self.rulelist.append(self.Rule("cen", "Other", 0.7))
         self.rulelist.append(self.Rule("amp", "Other", 0.7))
         self.rulelist.append(self.Rule("yin", "Other", 0.3))
-        print datetime.datetime.now()
-        print self.rulelist
+        # print datetime.datetime.now()
+        # print self.rulelist
 
     def set_outputs(self):
         self.outputlist = []
@@ -177,8 +177,8 @@ class SigProc:
         self.outputlist.append(self.Variable("Nature", 0))
         self.outputlist.append(self.Variable("Beep", 0))
         self.outputlist.append(self.Variable("Machine", 0))
-        print datetime.datetime.now()
-        print self.outputlist
+        # print datetime.datetime.now()
+        # print self.outputlist
 
     def get_output(self, name):
         for output in self.outputlist:
@@ -557,13 +557,13 @@ class Modulator:
         if self.enable_ai:
             self.sigproc.execute()
             self.effectchain = self.sigproc.output
-            print datetime.datetime.now()
-            pprint.pprint(self.effectchain)
+            # print datetime.datetime.now()
+            # pprint.pprint(self.effectchain)
         self.chooser.execute()
         sample = self.chooser.output
         if sample is None:
             return
-        print sample
+        # print sample
         player = SfPlayer(sample.path, loop=False)
         if self.effectchain['Volume']:
             player.setMul(self.effectchain['Volume-param'] or
