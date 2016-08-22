@@ -288,19 +288,27 @@ class Chooser:
 
     def execute(self):
         self.seedgen.execute()
-        if self.num_of_samples > 0:
-            samples = []
-            for sample in self.sample_list:
-                if sample.category in self.sigproc.output2:
-                    if self.sigproc.output2[sample.category] == 1:
-                        samples.append(sample)
-            has_samples = len(samples)
-            if has_samples > 0:
-                self.output = samples[(self.seedgen.output % has_samples)]
+        samples = []
+        if self.enable_ai:
+            if self.num_of_samples > 0:
+                for sample in self.sample_list:
+                    if sample.category in self.sigproc.output2:
+                        # Sample categories: {'Human': 0, 'Machine': 0, 'Beep': 0,
+                        # 'Nature': 0, 'Music': 0, 'Other': 0}
+                        if self.sigproc.output2[sample.category] == 1:
+                            samples.append(sample)
+                has_samples = len(samples)
+                if has_samples > 0:
+                    self.output = samples[(self.seedgen.output % has_samples)]
+                else:
+                    self.output = None
             else:
                 self.output = None
         else:
-            self.output = None
+            if self.num_of_samples > 0:
+                self.output = self.sample_list[(self.seedgen.output % self.num_of_samples)]
+            else:
+                self.output = None
 
     def set_sample_root(self, path):
         if os.path.isdir(path):
@@ -397,7 +405,7 @@ class HansMainFrame(UIBaseClass, wx.Frame):
         rightBox.Add(self.soloButton, flag=wx.EXPAND)
 
         self.aiList = wx.CheckListBox(panel)
-        self.aiList.Set(['Disable Modulator AI', 'Disable sample Chooser AI'])
+        self.aiList.Set(['Disable Modulator AI', 'Disable Chooser AI'])
         self.aiList.Bind(wx.EVT_CHECKLISTBOX, self.updateAIs)
         rightBox.Add(self.aiList, flag=wx.EXPAND)
 
@@ -488,12 +496,12 @@ class HansMainFrame(UIBaseClass, wx.Frame):
             if id == 0:
                 self.mediator.modulator.toggle_ai(False)
             else:
-                self.mediator.modulator.toggle_ai(False)
+                self.mediator.chooser.toggle_ai(False)
         else:
             if id == 0:
                 self.mediator.modulator.toggle_ai(True)
             else:
-                self.mediator.modulator.toggle_ai(True)
+                self.mediator.chooser.toggle_ai(True)
 
 
 class MidiProc:
