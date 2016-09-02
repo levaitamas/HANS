@@ -12,6 +12,8 @@ except ImportError:
     raise SystemError("Python-Pyo not found. Please, install it.")
 try:
     import wx
+    if str.startswith(wx.version(), '2'):
+        wx.SL_VALUE_LABEL = 0
 except ImportError:
     raise SystemError("wxPython not found. Please, install it.")
 import fnmatch
