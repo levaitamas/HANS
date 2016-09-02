@@ -19,6 +19,7 @@ import os
 import sys
 import random
 import threading
+import time
 # import datetime
 # import pprint
 
@@ -306,7 +307,8 @@ class Chooser:
                 self.output = None
         else:
             if self.num_of_samples > 0:
-                self.output = self.sample_list[(self.seedgen.output % self.num_of_samples)]
+                self.output = self.sample_list[
+                    (self.seedgen.output % self.num_of_samples)]
             else:
                 self.output = None
 
