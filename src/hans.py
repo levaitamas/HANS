@@ -605,7 +605,7 @@ class Modulator:
         else:
             chorus = freqshift
         if self.effectchain['Reverb']:
-            self.output = Freeverb(chorus,
+            self.output = Freeverb(Denorm(chorus),
                                    size=self.effectchain['Reverb-param'] or
                                    random.random(),
                                    damp=random.random(), bal=0.7)
