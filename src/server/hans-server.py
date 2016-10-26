@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-HANS
+HANS SERVER
 
 Copyright (C) 2015-     Tamás Lévai    <levait@tmit.bme.hu>
 Copyright (C) 2015-     Richárd Beregi <richard.beregi@sztaki.mta.hu>
@@ -10,20 +10,14 @@ try:
     from pyo import *
 except ImportError:
     raise SystemError("Python-Pyo not found. Please, install it.")
-try:
-    import wx
-    if str.startswith(wx.version(), '2'):
-        wx.SL_VALUE_LABEL = 0
-except ImportError:
-    raise SystemError("wxPython not found. Please, install it.")
+import SocketServer
+import argparse
 import fnmatch
 import os
 import sys
 import random
 import threading
 import time
-# import datetime
-# import pprint
 
 
 class SeedGen:
@@ -31,7 +25,7 @@ class SeedGen:
         self.output = self.execute()
 
     def execute(self):
-        self.output = random.randint(1, 102334155)
+        self.output = random.randrange(1, 102334156)
 
 
 class Sample:
@@ -46,6 +40,34 @@ class Sample:
 
 
 class SigProc:
+    class Variable:
+        def __init__(self, name, value):
+            self.name = name
+            self.value = value
+
+        def __repr__(self):
+            return "\n" + str(self.name) + ": " + str(self.value)
+
+    class Rule:
+        def __init__(self, active, inactive, weight):
+            self.active = active
+            self.inactive = inactive
+            self.weight = weight
+
+        def __repr__(self):
+            return ("\n" + str(self.active) +
+                    " effects " + str(self.inactive) +
+                    " with " + str(self.weight))
+
+    class WeightedValue:
+        def __init__(self, value, weight):
+            self.value = value
+            self.weight = weight
+
+        def __repr__(self):
+            return ("\n" + str(self.value) +
+                    " with " + str(self.weight))
+
     def __init__(self, audioin):
         self.yin = Yin(audioin)
         self.cen = Centroid(audioin)
@@ -90,13 +112,6 @@ class SigProc:
             'Beep': self.limit(self.outputlist[self.get_output("Beep")].value, 0.42),
             'Other': self.limit(self.outputlist[self.get_output("Other")].value, 0.5),
         }
-        # print(self.outputlist[self.get_output("Human")].value)
-        # print(self.outputlist[self.get_output("Machine")].value)
-        # print(self.outputlist[self.get_output("Music")].value)
-        # print(self.outputlist[self.get_output("Nature")].value)
-        # print(self.outputlist[self.get_output("Beep")].value)
-        # print(self.outputlist[self.get_output("Other")].value)
-        # pprint.pprint(self.output2)
 
     def set_inputs(self):
         self.inputlist = []
@@ -104,8 +119,6 @@ class SigProc:
         self.inputlist.append(self.Variable("cen", self.norm(self.cen.get(), 0, self.cenlim)))
         self.inputlist.append(self.Variable("rms", self.norm(self.rms.get(), 0, self.rmslim)))
         self.inputlist.append(self.Variable("amp", self.norm(self.amp.get(), 0, self.amplim)))
-        # print datetime.datetime.now()
-        # print self.inputlist
 
     def set_imputlims(self, yinlim, cenlim, rmslim, amplim):
         self.yinlim = yinlim
@@ -151,19 +164,22 @@ class SigProc:
         self.rulelist.append(self.Rule("amp", "Human", 1.0))
         self.rulelist.append(self.Rule("yin", "Human", 0.7))
         self.rulelist.append(self.Rule("cen", "Human", 0.8))
+
         self.rulelist.append(self.Rule("amp", "Machine", 0.8))
         self.rulelist.append(self.Rule("yin", "Machine", 0.7))
+
         self.rulelist.append(self.Rule("amp", "Music", 0.7))
         self.rulelist.append(self.Rule("yin", "Music", 0.7))
+
         self.rulelist.append(self.Rule("amp", "Nature", 0.7))
         self.rulelist.append(self.Rule("cen", "Nature", 0.85))
+
         self.rulelist.append(self.Rule("amp", "Beep", 0.7))
         self.rulelist.append(self.Rule("yin", "Beep", 1.0))
+
         self.rulelist.append(self.Rule("cen", "Other", 0.7))
         self.rulelist.append(self.Rule("amp", "Other", 0.7))
         self.rulelist.append(self.Rule("yin", "Other", 0.3))
-        # print datetime.datetime.now()
-        # print self.rulelist
 
     def set_outputs(self):
         self.outputlist = []
@@ -180,42 +196,12 @@ class SigProc:
         self.outputlist.append(self.Variable("Nature", 0))
         self.outputlist.append(self.Variable("Beep", 0))
         self.outputlist.append(self.Variable("Machine", 0))
-        # print datetime.datetime.now()
-        # print self.outputlist
 
     def get_output(self, name):
         for output in self.outputlist:
             if output.name == name:
                 return self.outputlist.index(output)
         return None
-
-    class Variable:
-        def __init__(self, name, value):
-            self.name = name
-            self.value = value
-
-        def __repr__(self):
-            return "\n" + str(self.name) + ": " + str(self.value)
-
-    class Rule:
-        def __init__(self, active, inactive, weight):
-            self.active = active
-            self.inactive = inactive
-            self.weight = weight
-
-        def __repr__(self):
-            return ("\n" + str(self.active) +
-                    " effects " + str(self.inactive) +
-                    " with " + str(self.weight))
-
-    class WeightedValue:
-        def __init__(self, value, weight):
-            self.value = value
-            self.weight = weight
-
-        def __repr__(self):
-            return ("\n" + str(self.value) +
-                    " with " + str(self.weight))
 
     def calcout(self):
         templist = []
@@ -285,9 +271,8 @@ class Chooser:
         self.num_of_samples = 0
         self.enable_ai = enable_ai
         self.output = None
+        self.set_sample_root(sample_root)
         self.execute()
-        # sample categories: {'Human': 0, 'Machine': 0, 'Beep': 0,
-        # 'Nature': 0, 'Music': 0, 'Other': 0}
 
     def execute(self):
         self.seedgen.execute()
@@ -296,8 +281,8 @@ class Chooser:
             if self.num_of_samples > 0:
                 for sample in self.sample_list:
                     if sample.category in self.sigproc.output2:
-                        # Sample categories: {'Human': 0, 'Machine': 0, 'Beep': 0,
-                        # 'Nature': 0, 'Music': 0, 'Other': 0}
+                        # Sample categories: {'Human': 0, 'Machine': 0,
+                        # 'Beep': 0, 'Nature': 0, 'Music': 0, 'Other': 0}
                         if self.sigproc.output2[sample.category] == 1:
                             samples.append(sample)
                 has_samples = len(samples)
@@ -337,177 +322,6 @@ class Chooser:
         self.enable_ai = state
 
 
-class Mediator(object):
-    def __init__(self, chooser=None, modulator=None, sigproc=None):
-        self.chooser = chooser
-        self.modulator = modulator
-        self.sigproc = sigproc
-
-    def set_chooser(self, chooser):
-        assert chooser
-        self.chooser = chooser
-
-    def set_modulator(self, modulator):
-        assert modulator
-        self.modulator = modulator
-
-    def set_sigproc(self, sigproc):
-        assert sigproc
-        self.sigproc = sigproc
-
-
-class UIBaseClass(object):
-    def __init__(self, mediator):
-        self.set_mediator(mediator)
-
-    def set_mediator(self, mediator):
-        assert mediator
-        self.mediator = mediator
-
-
-class HansMainFrame(UIBaseClass, wx.Frame):
-    def __init__(self, mediator, parent=None):
-        UIBaseClass.__init__(self, mediator)
-        wx.Frame.__init__(self,
-                          parent,
-                          title='HANS',
-                          size=(700, 550))
-        self.SetMinSize(wx.Size(700, 550))
-        self.initUI()
-        self.Centre()
-        self.Show()
-
-    def initUI(self):
-        panel = wx.Panel(self)
-        leftBox = wx.BoxSizer(wx.VERTICAL)
-        leftBox.SetMinSize(wx.Size(350, 100))
-        rightBox = wx.BoxSizer(wx.VERTICAL)
-        rightBox.SetMinSize(wx.Size(350, 100))
-
-        sample_dir = (os.path.dirname(os.path.realpath(__file__))
-                      + os.sep + 'samples')
-        self.folderDirButton = wx.DirPickerCtrl(panel, path=sample_dir)
-        self.folderDirButton.Bind(wx.EVT_DIRPICKER_CHANGED,
-                                  self.updateSampleRootDir)
-        leftBox.Add(self.folderDirButton, flag=wx.EXPAND)
-
-        self.folderList = wx.CheckListBox(panel)
-        self.folderList.Bind(wx.EVT_CHECKLISTBOX, self.updateFolders)
-        leftBox.Add(self.folderList, 2, flag=wx.EXPAND)
-
-        self.updateSampleRootDir(None)
-
-        self.modulatorList = wx.CheckListBox(panel)
-        self.modulatorList.Set(['Volume', 'Speed',
-                                'Distortion', 'Frequency Shifter',
-                                'Chorus', 'Reverb'])
-        self.modulatorList.Bind(wx.EVT_CHECKLISTBOX, self.updateModulators)
-        rightBox.Add(self.modulatorList, flag=wx.EXPAND)
-
-        self.soloButton = wx.Button(panel, label='HANSSOLO')
-        self.soloButton.Bind(wx.EVT_BUTTON, self.enterHyperspace)
-        rightBox.Add(self.soloButton, flag=wx.EXPAND)
-
-        self.aiList = wx.CheckListBox(panel)
-        self.aiList.Set(['Disable Modulator AI', 'Disable Chooser AI'])
-        self.aiList.Bind(wx.EVT_CHECKLISTBOX, self.updateAIs)
-        rightBox.Add(self.aiList, flag=wx.EXPAND)
-
-        panelBox = wx.BoxSizer(wx.HORIZONTAL)
-        panelBox.Add(leftBox, flag=wx.EXPAND)
-        panelBox.Add(rightBox, flag=wx.EXPAND)
-        panel.SetSizer(panelBox)
-
-        self.ampslide = wx.Slider(panel, -1, 80.0, 0.0, 500.0,
-                                  size=(150, -1),
-                                  name=('ampslider'),
-                                  style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
-        self.rmsslide = wx.Slider(panel, -1, 70.0, 0.0, 200.0,
-                                  size=(150, -1),
-                                  name=('rmsslider'),
-                                  style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
-        self.censlide = wx.Slider(panel, -1, 6000, 0.0, 10000.0,
-                                  size=(150, -1),
-                                  name=('censlider'),
-                                  style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
-        self.yinslide = wx.Slider(panel, -1, 400, 0.0, 1000.0,
-                                  size=(150, -1),
-                                  name=('yinslider'),
-                                  style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
-        self.Bind(wx.EVT_SLIDER, self.sliderUpdate)
-
-        self.amplab = wx.StaticText(panel, -1, "AMP",
-                                    size=(30, -1),
-                                    style=0, name=('amplab'))
-        self.rmslab = wx.StaticText(panel, -1, "RMS",
-                                    size=(30, -1),
-                                    style=0, name=('rmslab'))
-        self.cenlab = wx.StaticText(panel, -1, "CEN",
-                                    size=(30, -1),
-                                    style=0, name=('cenlab'))
-        self.yinlab = wx.StaticText(panel, -1, "YIN\tYAN",
-                                    size=(30, -1),
-                                    style=0, name=('yinlab'))
-
-        rightBox.Add(self.amplab, flag=wx.EXPAND)
-        rightBox.Add(self.ampslide, flag=wx.EXPAND)
-        rightBox.Add(self.rmslab, flag=wx.EXPAND)
-        rightBox.Add(self.rmsslide, flag=wx.EXPAND)
-        rightBox.Add(self.cenlab, flag=wx.EXPAND)
-        rightBox.Add(self.censlide, flag=wx.EXPAND)
-        rightBox.Add(self.yinlab, flag=wx.EXPAND)
-        rightBox.Add(self.yinslide, flag=wx.EXPAND)
-
-    def sliderUpdate(self, event):
-        amppos = self.ampslide.GetValue()/100.0
-        rmspos = self.rmsslide.GetValue()/100.0
-        cenpos = self.censlide.GetValue()
-        yinpos = self.yinslide.GetValue()
-        self.mediator.sigproc.set_imputlims(yinpos, cenpos, rmspos, amppos)
-
-    def updateSampleRootDir(self, e):
-        dirs = []
-        path = self.folderDirButton.GetPath()
-        self.mediator.chooser.set_sample_root(path)
-        for root, dirnames, filenames in os.walk(path):
-            for dirname in dirnames:
-                dirs.append(dirname)
-            self.folderList.Set(dirs)
-
-    def enterHyperspace(self, e):
-        threading.Thread(target=doTheWookieeBoogie).start()
-
-    def updateFolders(self, e):
-        if self.folderList.IsChecked(e.GetInt()):
-            folder = os.path.join(self.mediator.chooser.sample_root,
-                                  e.GetString())
-            self.mediator.chooser.load_samples_from_folder(folder)
-            pass
-        else:
-            folder = os.path.join(self.mediator.chooser.sample_root,
-                                  e.GetString())
-            self.mediator.chooser.remove_samples_from_folder(folder)
-
-    def updateModulators(self, e):
-        if self.modulatorList.IsChecked(e.GetInt()):
-            self.mediator.modulator.toggle_effect(e.GetString(), 1)
-        else:
-            self.mediator.modulator.toggle_effect(e.GetString(), 0)
-
-    def updateAIs(self, e):
-        id = e.GetInt()
-        if self.aiList.IsChecked(id):
-            if id == 0:
-                self.mediator.modulator.toggle_ai(False)
-            else:
-                self.mediator.chooser.toggle_ai(False)
-        else:
-            if id == 0:
-                self.mediator.modulator.toggle_ai(True)
-            else:
-                self.mediator.chooser.toggle_ai(True)
-
-
 class MidiProc:
     def __init__(self):
         self.rawm = RawMidi(handle_midievent)
@@ -533,9 +347,9 @@ def handle_midievent(status, note, velocity):
 
 
 def doTheWookieeBoogie():
-    for _ in xrange(random.randint(42, 64)):
+    for _ in xrange(random.randrange(42, 65)):
         handle_midievent(145, 36, 125)
-        time.sleep(0.07 + random.random()/5)
+        time.sleep(0.07 + random.random()/4)
 
 
 class Modulator:
@@ -577,6 +391,7 @@ class Modulator:
             return
         # print sample
         player = SfPlayer(sample.path, loop=False)
+        denorm_noise = Noise(1e-24)
         if self.effectchain['Volume']:
             player.setMul(self.effectchain['Volume-param'] or
                           random.random())
@@ -591,11 +406,11 @@ class Modulator:
         else:
             distortion = player
         if self.effectchain['Frequency Shifter']:
-            freqshift = FreqShift(distortion,
+            freqshift = FreqShift(distortion + denorm_noise,
                                   self.effectchain['FS-param'] or
                                   random.random() * 220)
         else:
-            freqshift = distortion
+            freqshift = distortion + denorm_noise
         if self.effectchain['Chorus']:
             chorus = Chorus(freqshift,
                             depth=self.effectchain['Chorus-param'] or
@@ -605,7 +420,7 @@ class Modulator:
         else:
             chorus = freqshift
         if self.effectchain['Reverb']:
-            self.output = Freeverb(Denorm(chorus),
+            self.output = Freeverb(chorus,
                                    size=self.effectchain['Reverb-param'] or
                                    random.random(),
                                    damp=random.random(), bal=0.7)
@@ -625,37 +440,77 @@ class Modulator:
         self.enable_ai = state
 
 
+class NetConHandler(SocketServer.BaseRequestHandler):
+    def handle(self):
+        data = self.request[0].strip()
+        if data == 'solo':
+            threading.Thread(target=doTheWookieeBoogie).start()
+        elif data == 'samplereload':
+            chooser.set_sample_root(chooser.sample_root)
+        elif data.startswith("{'amp':"):
+            limits = eval(data)
+            sigproc.set_imputlims(limits['yin'], limits['cen'],
+                                  limits['rms'], limits['amp'])
+
+
+class ConnectionManager():
+    def __init__(self, host="localhost", port=9999):
+        self.port = port
+        self.host = host
+        self.server = SocketServer.UDPServer((self.host, self.port),
+                                             NetConHandler)
+
+
 if __name__ == "__main__":
-    ##
-    # PYO
-    # RawMidi is supported only since Python-Pyo version 0.7.6
+    parser = argparse.ArgumentParser(
+        description='HANS Server')
+    parser.add_argument('-H', '--host',
+                        help='HANS server IP adddress or domain name',
+                        default='localhost')
+    parser.add_argument('-p', '--port',
+                        help='HANS server port',
+                        default='9999',
+                        type=int)
+    parser.add_argument('-m', '--midi',
+                        help='Input MIDI channel number',
+                        default=None,
+                        type=int)
+    parser.add_argument('-s', '--sampleroot',
+                        help='Path of samples root folder',
+                        default='./samples/')
+    parser.add_argument('-v', '--verbose',
+                        help='Turn on verbose mode',
+                        action='store_true')
+    args = parser.parse_args()
+
     if int(''.join(map(str, getVersion()))) < 76:
+        # RawMidi is supported only since Python-Pyo version 0.7.6
         raise SystemError("Please, update your Python-Pyo install" +
                           "to version 0.7.6 or later.")
-    # Setup server
+
     if sys.platform.startswith("win"):
         server = Server(duplex=1).boot()
     else:
         server = Server(duplex=1, audio='jack', jackname='HANS').boot()
-    # Uncomment following line to enable debug info
-    # server.setVerbosity(8)
-    # Set MIDI input
-    pm_list_devices()
-    inid = -1
-    while (inid > pm_count_devices()-1 and inid != 99) or inid < 0:
-        inid = input("Please select input ID [99 for all]: ")
-    server.setMidiInputDevice(inid)
+
+    if args.verbose:
+        server.setVerbosity(8)
+
+    if args.midi:
+        server.setMidiInputDevice(args.midi)
+    else:
+        pm_list_devices()
+        inid = -1
+        while (inid > pm_count_devices()-1 and inid != 99) or inid < 0:
+            inid = input("Please select input ID [99 for all]: ")
+            server.setMidiInputDevice(inid)
     server.start()
-    ##
-    # COMPONENTS
+
     midiproc = MidiProc()
     sigproc = SigProc(Input())
     seedgen = SeedGen()
-    chooser = Chooser(seedgen, sigproc)
+    chooser = Chooser(seedgen, sigproc, sample_root=args.sampleroot)
     modulator = Modulator(chooser, sigproc)
-    mediator = Mediator(chooser, modulator, sigproc)
-    ##
-    # GUI
-    app = wx.App()
-    HansMainFrame(mediator)
-    app.MainLoop()
+    conmanager = ConnectionManager(args.host, args.port)
+
+    conmanager.server.serve_forever()

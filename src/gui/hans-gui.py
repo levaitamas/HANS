@@ -1,44 +1,34 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-HANS
+HANS GUI
 
 Copyright (C) 2016-     Tamás Lévai    <levait@tmit.bme.hu>
 Copyright (C) 2016-     Richárd Beregi <richard.beregi@sztaki.mta.hu>
 """
-try:
-    from pyo import *
-except ImportError:
-    raise SystemError("Python-Pyo not found. Please, install it.")
 try:
     import wx
     if str.startswith(wx.version(), '2'):
         wx.SL_VALUE_LABEL = 0
 except ImportError:
     raise SystemError("wxPython not found. Please, install it.")
-import fnmatch
-import os
-import sys
-import random
-import threading
-import time
+import argparse
+import socket
 
 
-class OSCManager(object):
-    def __init__(self, address='/data/hans', port=9900, host='127.0.0.1'):
-        self.address = address
+class ConnectionManager():
+    def __init__(self, host="localhost", port=9999):
         self.port = port
         self.host = host
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    # http://ajaxsoundstudio.com/pyodoc/api/classes/opensndctrl.html#oscdatasend
-    def send_data(self, type, data):
-        a = OscDataSend(type, self.port, self.port, self.host)
-        a.send(data)
+    def send_data(self, data):
+        self.socket.sendto(data, (self.host, self.port))
 
 
 class HansMainFrame(wx.Frame):
-    def __init__(self, osc_manager, parent=None):
-        self.oscmanager = osc_manager
+    def __init__(self, con_manager, parent=None):
+        self.conmanager = con_manager
         wx.Frame.__init__(self,
                           parent,
                           title='HANS',
@@ -109,31 +99,26 @@ class HansMainFrame(wx.Frame):
         rmspos = self.rmsslide.GetValue()/100.0
         cenpos = float(self.censlide.GetValue())
         yinpos = float(self.yinslide.GetValue())
-        data = ['amp', amppos, 'rms', rmspos,
-                'cen', cenpos, 'yin', yinpos]
-        self.oscmanager.send_data('sfsfsfsf', data)
+        data = {'amp': amppos, 'rms': rmspos,
+                'cen': cenpos, 'yin': yinpos}
+        self.conmanager.send_data(str(data))
 
     def enterHyperspace(self, e):
-        self.oscmanager.send_data('b', 'solo')
+        self.conmanager.send_data('solo')
 
 
 if __name__ == "__main__":
-    ##
-    # PYO
-    # RawMidi is supported only since Python-Pyo version 0.7.6
-    if int(''.join(map(str, getVersion()))) < 76:
-        raise SystemError("Please, update your Python-Pyo install" +
-                          "to version 0.7.6 or later.")
-    # Setup server
-    server = Server().boot()
-    # Uncomment following line to enable debug info
-    # server.setVerbosity(8)
-    server.start()
-    ##
-    # COMPONENTS
-    oscmanager = OSCManager()
-    ##
-    # GUI
+    parser = argparse.ArgumentParser(
+        description='HANS GUI')
+    parser.add_argument('-H', '--host',
+                        help='HANS server IP adddress or domain name',
+                        default='localhost')
+    parser.add_argument('-p', '--port',
+                        help='HANS server port',
+                        default='9999',
+                        type=int)
+    args = parser.parse_args()
+    conmanager = ConnectionManager(args.host, args.port)
     app = wx.App()
-    HansMainFrame(oscmanager)
+    HansMainFrame(conmanager)
     app.MainLoop()
