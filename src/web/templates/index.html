@@ -8,7 +8,11 @@
     <link rel="stylesheet" href='/static/style.css' />
 </head>
 <body style="max-width:400px">
-    <h2>Welcome zu HANS!</h2>
-    <h3>Hello {{ name }}</h3>
+    <h1>Welcome zu HANS!</h1>
+    <h2>Hello {{ip}}</h2> 
+    <form action="/hanssolo" method="post">
+        <button type="submit" name="hanssolo">HansSolo</button>
+    </form>
+    <p id="reply">{{reply}}</p>
 </body>
 </html>

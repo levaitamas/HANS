@@ -2,10 +2,18 @@
     background: black;
     color: greenyellow;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 11px;
+    font-size: 22px;
 	text-align: center;
 }
-p {
+p{
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 13px;
+    font-size: 26px;
+}
+
+button{
+    background: darkgrey;
+    color: greenyellow;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 22px;
+	text-align: center;
 }
