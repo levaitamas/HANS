@@ -466,7 +466,7 @@ if __name__ == "__main__":
         description='HANS Server')
     parser.add_argument('-H', '--host',
                         help='HANS server IP adddress or domain name',
-                        default='localhost')
+                        default='0.0.0.0')
     parser.add_argument('-p', '--port',
                         help='HANS server port',
                         default='9999',
