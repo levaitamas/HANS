@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+HANS WEB
+
+Copyright (C) 2016-     Richárd Beregi <richard.beregi@sztaki.mta.hu>
+Copyright (C) 2016-     Tamás Lévai    <levait@tmit.bme.hu>
+"""
 from flask import Flask, render_template, redirect, url_for, request
 import logging
 import socket
