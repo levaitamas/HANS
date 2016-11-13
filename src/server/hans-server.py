@@ -13,6 +13,7 @@ except ImportError:
 import SocketServer
 import argparse
 import fnmatch
+import logging
 import os
 import sys
 import random
@@ -112,6 +113,10 @@ class SigProc:
             'Beep': self.limit(self.outputlist[self.get_output("Beep")].value, 0.42),
             'Other': self.limit(self.outputlist[self.get_output("Other")].value, 0.5),
         }
+
+        logging.info(str(self.inputlist))
+        logging.info(str(self.output))
+        logging.info(str(self.output2))
 
     def set_inputs(self):
         self.inputlist = []
@@ -298,6 +303,7 @@ class Chooser:
                     (self.seedgen.output % self.num_of_samples)]
             else:
                 self.output = None
+        logging.info(str(self.output))
 
     def set_sample_root(self, path):
         if os.path.isdir(path):
@@ -449,6 +455,7 @@ class NetConHandler(SocketServer.BaseRequestHandler):
         data = self.request[0].strip()
         if data == 'solo':
             threading.Thread(target=doTheWookieeBoogie).start()
+            logging.info('SOLO request')
         elif data == 'samplereload':
             chooser.set_sample_root(chooser.sample_root)
         elif data.startswith("{'amp':"):
@@ -498,7 +505,11 @@ if __name__ == "__main__":
         server = Server(duplex=1, audio='jack', jackname='HANS').boot()
 
     if args.verbose:
-        server.setVerbosity(8)
+        # server.setVerbosity(8)
+        logging.basicConfig(filename='hans-server.log',
+                            format='%(asctime)s: %(message)s',
+                            datefmt='%Y-%m-%d %I:%M:%S',
+                            level=logging.INFO)
 
     if args.midi:
         server.setMidiInputDevice(args.midi)
@@ -516,5 +527,7 @@ if __name__ == "__main__":
     chooser = Chooser(seedgen, sigproc, sample_root=args.sampleroot)
     modulator = Modulator(chooser, sigproc)
     conmanager = ConnectionManager(args.host, args.port)
+
+    logging.info('HANS-SERVER started')
 
     conmanager.server.serve_forever()
