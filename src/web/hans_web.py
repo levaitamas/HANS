@@ -7,12 +7,13 @@ Copyright (C) 2016-     Richárd Beregi <richard.beregi@sztaki.mta.hu>
 Copyright (C) 2016-     Tamás Lévai    <levait@tmit.bme.hu>
 """
 from flask import Flask, render_template, redirect, url_for, request
+import argparse
 import logging
 import socket
 
-hans_addr = 'localhost'
-hans_port = 9999
 app = Flask(__name__)
+hans_addr = ''
+hans_port = 0
 
 
 def clickCount():
@@ -45,9 +46,23 @@ def hanssolo():
 
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='hans-server.log',
+    parser = argparse.ArgumentParser(description='HANS Web')
+    parser.add_argument('-t', '--testing',
+                        help='Turn on testing mode',
+                        action='store_true')
+    args = parser.parse_args()
+
+    logging.basicConfig(filename='hans-web.log',
                         format='%(asctime)s: %(message)s',
                         datefmt='%Y-%m-%d %I:%M:%S',
                         level=logging.INFO)
     logging.info('HANS-WEB started')
-    app.run(host='0.0.0.0')
+
+    if args.testing:
+        hans_addr = 'localhost'
+        hans_port = 9999
+        app.run(host='0.0.0.0')
+    else:
+        hans_addr = '192.168.0.3'
+        hans_port = 9999
+        app.run(host='0.0.0.0', port=80)
