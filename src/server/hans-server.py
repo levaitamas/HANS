@@ -36,8 +36,8 @@ class Sample:
         self.category = category or os.path.basename(os.path.dirname(path))
 
     def __repr__(self):
-        return ("\n" + self.path.split(os.sep)[-1] +
-                " [" + str(self.category) + "]")
+        return ("{'Path': '" + self.path.split(os.sep)[-1] +
+                "', 'Category': '" + str(self.category) + "'}")
 
 
 class SigProc:
@@ -47,7 +47,7 @@ class SigProc:
             self.value = value
 
         def __repr__(self):
-            return "\n" + str(self.name) + ": " + str(self.value)
+            return "'" + str(self.name) + "': " + str(self.value)
 
     class Rule:
         def __init__(self, active, inactive, weight):
@@ -56,9 +56,9 @@ class SigProc:
             self.weight = weight
 
         def __repr__(self):
-            return ("\n" + str(self.active) +
-                    " effects " + str(self.inactive) +
-                    " with " + str(self.weight))
+            return ("{'Active': '" + str(self.active) +
+                    "', 'Inactive': '" + str(self.inactive) +
+                    "', 'Weight': '" + str(self.weight) + "'}")
 
     class WeightedValue:
         def __init__(self, value, weight):
@@ -66,8 +66,7 @@ class SigProc:
             self.weight = weight
 
         def __repr__(self):
-            return ("\n" + str(self.value) +
-                    " with " + str(self.weight))
+            return "{'" + str(self.value) + "': " + str(self.weight) + "}"
 
     def __init__(self, audioin):
         self.yin = Yin(audioin)
@@ -91,8 +90,8 @@ class SigProc:
         self.set_inputs()
         self.calcout()
         self.output = {
-            'Volume': self.limit(self.outputlist[self.get_output("vol")].value, 0.4),
-            'Volume-param': self.denorm(self.outputlist[self.get_output("vol")].value, 0.2, 1.0),
+            'Volume': self.limit(self.outputlist[self.get_output("vol")].value, 0.2),
+            'Volume-param': self.denorm(self.outputlist[self.get_output("vol")].value, 0.4, 1.0),
             'Speed': self.limit(self.outputlist[self.get_output("spe")].value, 0.6),
             'Speed-param': random.choice([-1, 1]) * self.denorm(self.outputlist[self.get_output("spe")].value, 0.6, 1.4),
             'Distortion': self.limit(self.outputlist[self.get_output("dis")].value, 0.4),
@@ -106,15 +105,20 @@ class SigProc:
         }
 
         self.output2 = {
-            'Human': self.limit(self.outputlist[self.get_output("Human")].value, 0.42),
-            'Machine': self.limit(self.outputlist[self.get_output("Machine")].value, 0.42),
-            'Music': self.limit(self.outputlist[self.get_output("Music")].value, 0.42),
+            'Human': self.limit(self.outputlist[self.get_output("Human")].value, 0.25),
+            'Machine': self.limit(self.outputlist[self.get_output("Machine")].value, 0.48),
+            'Music': self.limit(self.outputlist[self.get_output("Music")].value, 0.5),
             'Nature': self.limit(self.outputlist[self.get_output("Nature")].value, 0.42),
-            'Beep': self.limit(self.outputlist[self.get_output("Beep")].value, 0.42),
+            'Beep': self.limit(self.outputlist[self.get_output("Beep")].value, 0.52),
             'Other': self.limit(self.outputlist[self.get_output("Other")].value, 0.5),
         }
 
-        logging.info(str(self.inputlist))
+        logging.info(("{" +
+                      str(self.inputlist[0]) + ", " +
+                      str(self.inputlist[1]) + ", " +
+                      str(self.inputlist[2]) + ", " +
+                      str(self.inputlist[3]) +
+                      "}"))
         logging.info(str(self.output))
         logging.info(str(self.output2))
 
@@ -175,6 +179,7 @@ class SigProc:
 
         self.rulelist.append(self.Rule("amp", "Music", 0.7))
         self.rulelist.append(self.Rule("yin", "Music", 0.7))
+        self.rulelist.append(self.Rule("cen", "Music", 0.6))
 
         self.rulelist.append(self.Rule("amp", "Nature", 0.7))
         self.rulelist.append(self.Rule("cen", "Nature", 0.85))
@@ -286,8 +291,6 @@ class Chooser:
             if self.num_of_samples > 0:
                 for sample in self.sample_list:
                     if sample.category in self.sigproc.output2:
-                        # Sample categories: {'Human': 0, 'Machine': 0,
-                        # 'Beep': 0, 'Nature': 0, 'Music': 0, 'Other': 0}
                         if self.sigproc.output2[sample.category] == 1:
                             samples.append(sample)
                 has_samples = len(samples)
@@ -303,7 +306,11 @@ class Chooser:
                     (self.seedgen.output % self.num_of_samples)]
             else:
                 self.output = None
-        logging.info(str(self.output))
+
+        if self.output:
+            logging.info(str(self.output))
+        else:
+            logging.info("{'Path': null, 'Category': null}")
 
     def set_sample_root(self, path):
         if os.path.isdir(path):
@@ -507,7 +514,7 @@ if __name__ == "__main__":
     if args.verbose:
         # server.setVerbosity(8)
         logging.basicConfig(filename='hans-server.log',
-                            format='%(asctime)s: %(message)s',
+                            format="{'Timestamp': '%(asctime)s', 'Message': '%(message)s'}",
                             datefmt='%Y-%m-%d %I:%M:%S',
                             level=logging.INFO)
 
