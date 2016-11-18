@@ -9,6 +9,7 @@ Copyright (C) 2016-     Tamás Lévai    <levait@tmit.bme.hu>
 from flask import Flask, render_template, redirect, url_for, request
 import argparse
 import logging
+import random
 import socket
 
 app = Flask(__name__)
@@ -18,13 +19,16 @@ hans_port = 0
 
 def clickCount():
     clickCount.clicks += 1
-    if(clickCount.clicks == 16):
+    if(clickCount.clicks == clickCount.limit):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.sendto('solo', (hans_addr, hans_port))
-        clickCount.clicks = 0
         logging.info('SOLO sent')
+        clickCount.clicks = 0
+        if random.random() < 0.8:
+            clickCount.limit += 1
 
 clickCount.clicks = 0
+clickCount.limit = 4
 
 
 @app.route('/', methods=['POST', 'GET'])
