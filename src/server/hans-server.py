@@ -77,7 +77,7 @@ class SigProc:
         self.cenlim = 6000
         self.rmslim = 0.6
         self.amplim = 0.8
-        self.inputlist = []
+        self.inputlist = {}
         self.outputlist = []
         self.rulelist = []
         self.set_inputs()
@@ -113,21 +113,17 @@ class SigProc:
             'Other': self.limit(self.outputlist[self.get_output("Other")].value, 0.5),
         }
 
-        logging.info(("{" +
-                      str(self.inputlist[0]) + ", " +
-                      str(self.inputlist[1]) + ", " +
-                      str(self.inputlist[2]) + ", " +
-                      str(self.inputlist[3]) +
-                      "}"))
-        logging.info(str(self.output))
-        logging.info(str(self.output2))
+        logging.info(str(self.inputlist) + ',' +
+                     str(self.output) + ',' +
+                     str(self.output2))
 
     def set_inputs(self):
-        self.inputlist = []
-        self.inputlist.append(self.Variable("yin", self.norm(self.yin.get(), 0, self.yinlim)))
-        self.inputlist.append(self.Variable("cen", self.norm(self.cen.get(), 0, self.cenlim)))
-        self.inputlist.append(self.Variable("rms", self.norm(self.rms.get(), 0, self.rmslim)))
-        self.inputlist.append(self.Variable("amp", self.norm(self.amp.get(), 0, self.amplim)))
+        self.inputlist = {
+            'yin': self.norm(self.yin.get(), 0, self.yinlim),
+            'cen': self.norm(self.cen.get(), 0, self.cenlim),
+            'rms': self.norm(self.rms.get(), 0, self.rmslim),
+            'amp': self.norm(self.amp.get(), 0, self.amplim),
+        }
 
     def set_imputlims(self, yinlim, cenlim, rmslim, amplim):
         self.yinlim = yinlim
@@ -218,10 +214,10 @@ class SigProc:
         for output in self.outputlist:
             for rule in self.rulelist:
                 if output.name == rule.inactive:
-                    for input in self.inputlist:
-                        if input.name == rule.active:
+                    for name, value in self.inputlist.iteritems():
+                        if name == rule.active:
                             templist.append(
-                                self.WeightedValue(input.value,
+                                self.WeightedValue(value,
                                                    rule.weight))
                     for outputold in self.outputlist:
                         if outputold.name == rule.active:
