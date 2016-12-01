@@ -35,9 +35,9 @@ class Sample:
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
 
-    def __repr__(self):
-        return ("{'Path': '" + self.path.split(os.sep)[-1] +
-                "', 'Category': '" + str(self.category) + "'}")
+    def __str__(self):
+        return "{'Path': '%s', 'Category': '%s'}" \
+            % (self.path.split(os.sep)[-1], self.category)
 
 
 class SigProc:
@@ -46,8 +46,8 @@ class SigProc:
             self.name = name
             self.value = value
 
-        def __repr__(self):
-            return "'" + str(self.name) + "': " + str(self.value)
+        def __str__(self):
+            return "'%s': %s" % (self.name, self.value)
 
     class Rule:
         def __init__(self, active, inactive, weight):
@@ -55,18 +55,19 @@ class SigProc:
             self.inactive = inactive
             self.weight = weight
 
-        def __repr__(self):
-            return ("{'Active': '" + str(self.active) +
-                    "', 'Inactive': '" + str(self.inactive) +
-                    "', 'Weight': '" + str(self.weight) + "'}")
+        def __str__(self):
+            return "{'Active': '%s'," \
+                   "'Inactive': '%s'," \
+                   "'Weight': '%s'}" \
+                   % (self.active, self.inactive, self.weight)
 
     class WeightedValue:
         def __init__(self, value, weight):
             self.value = value
             self.weight = weight
 
-        def __repr__(self):
-            return "{'" + str(self.value) + "': " + str(self.weight) + "}"
+        def __str__(self):
+            return "{'%s': %s}" % (self.value, self.weight)
 
     def __init__(self, audioin):
         self.yin = Yin(audioin)
@@ -113,9 +114,7 @@ class SigProc:
             'Other': self.limit(self.outputlist[self.get_output("Other")].value, 0.5),
         }
 
-        logging.info(str(self.inputlist) + ',' +
-                     str(self.output) + ',' +
-                     str(self.output2))
+        logging.info("[%s,%s,%s]" % (self.inputlist, self.output, self.output2))
 
     def set_inputs(self):
         self.inputlist = {
@@ -134,13 +133,12 @@ class SigProc:
     def set_rules(self):
         self.rulelist = []
         for i in xrange(1, 3):
-            id = str(i)
-            self.rulelist.append(self.Rule("vol"+id, "vol", 1.0/i))
-            self.rulelist.append(self.Rule("spe"+id, "spe", 1.0/i))
-            self.rulelist.append(self.Rule("dis"+id, "dis", 1.0/i))
-            self.rulelist.append(self.Rule("fre"+id, "fre", 1.0/i))
-            self.rulelist.append(self.Rule("cho"+id, "cho", 1.0/i))
-            self.rulelist.append(self.Rule("rev"+id, "rev", 1.0/i))
+            self.rulelist.append(self.Rule("vol%s" % id, "vol", 1.0/i))
+            self.rulelist.append(self.Rule("spe%s" % id, "spe", 1.0/i))
+            self.rulelist.append(self.Rule("dis%s" % id, "dis", 1.0/i))
+            self.rulelist.append(self.Rule("fre%s" % id, "fre", 1.0/i))
+            self.rulelist.append(self.Rule("cho%s" % id, "cho", 1.0/i))
+            self.rulelist.append(self.Rule("rev%s" % id, "rev", 1.0/i))
 
         self.rulelist.append(self.Rule("yin", "spe", 2.00))
         self.rulelist.append(self.Rule("yin", "dis", 0.70))
@@ -190,12 +188,12 @@ class SigProc:
     def set_outputs(self):
         self.outputlist = []
         for id in ['', '1', '2']:
-            self.outputlist.append(self.Variable("vol"+id, 0))
-            self.outputlist.append(self.Variable("spe"+id, 0))
-            self.outputlist.append(self.Variable("dis"+id, 0))
-            self.outputlist.append(self.Variable("fre"+id, 0))
-            self.outputlist.append(self.Variable("cho"+id, 0))
-            self.outputlist.append(self.Variable("rev"+id, 0))
+            self.outputlist.append(self.Variable("vol%s" % id, 0))
+            self.outputlist.append(self.Variable("spe%s" % id, 0))
+            self.outputlist.append(self.Variable("dis%s" % id, 0))
+            self.outputlist.append(self.Variable("fre%s" % id, 0))
+            self.outputlist.append(self.Variable("cho%s" % id, 0))
+            self.outputlist.append(self.Variable("rev%s" % id, 0))
         self.outputlist.append(self.Variable("Other", 0))
         self.outputlist.append(self.Variable("Music", 0))
         self.outputlist.append(self.Variable("Human", 0))
