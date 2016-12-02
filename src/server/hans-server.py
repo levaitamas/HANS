@@ -82,7 +82,7 @@ class SigProc:
                             self.denorm(self.outputlist["spe"], 0.6, 1.4)),
             'Distortion': self.toggle(self.outputlist["dis"], 0.4),
             'Distortion-param': self.denorm(self.outputlist["dis"], 0.4, 1.0),
-            'Frequency Shifter': self.toggle(self.outputlist["fre"], 0.6),
+            'FreqShift': self.toggle(self.outputlist["fre"], 0.6),
             'FS-param': self.denorm(self.outputlist["fre"], -2000.0, 8000.0),
             'Chorus': self.toggle(self.outputlist["cho"], 0.4),
             'Chorus-param': self.denorm(self.outputlist["cho"], 1.0, 4.0),
@@ -360,7 +360,7 @@ class Modulator:
         self.effectchain = {'Volume': False, 'Volume-param': 0,
                             'Speed': False, 'Speed-param': 0,
                             'Distortion': False, 'Distortion-param': 0,
-                            'Frequency Shifter': False, 'FS-param': 0,
+                            'FreqShift': False, 'FS-param': 0,
                             'Chorus': False, 'Chorus-param': 0,
                             'Reverb': False, 'Reverb-param': 0}
 
@@ -387,7 +387,7 @@ class Modulator:
                                slope=0.7)
         else:
             distortion = player
-        if self.effectchain['Frequency Shifter']:
+        if self.effectchain['FreqShift']:
             freqshift = FreqShift(distortion + denorm_noise,
                                   self.effectchain['FS-param'] or
                                   random.random() * 220)
