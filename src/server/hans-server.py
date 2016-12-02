@@ -75,28 +75,28 @@ class SigProc:
         self.set_inputlist()
         self.calcout()
         self.output = {
-            'Volume': self.limit(self.outputlist["vol"], 0.2),
+            'Volume': self.toggle(self.outputlist["vol"], 0.2),
             'Volume-param': self.denorm(self.outputlist["vol"], 0.4, 1.0),
-            'Speed': self.limit(self.outputlist["spe"], 0.6),
+            'Speed': self.toggle(self.outputlist["spe"], 0.6),
             'Speed-param': (random.choice([-1, 1]) *
                             self.denorm(self.outputlist["spe"], 0.6, 1.4)),
-            'Distortion': self.limit(self.outputlist["dis"], 0.4),
+            'Distortion': self.toggle(self.outputlist["dis"], 0.4),
             'Distortion-param': self.denorm(self.outputlist["dis"], 0.4, 1.0),
-            'Frequency Shifter': self.limit(self.outputlist["fre"], 0.6),
+            'Frequency Shifter': self.toggle(self.outputlist["fre"], 0.6),
             'FS-param': self.denorm(self.outputlist["fre"], -2000.0, 8000.0),
-            'Chorus': self.limit(self.outputlist["cho"], 0.4),
+            'Chorus': self.toggle(self.outputlist["cho"], 0.4),
             'Chorus-param': self.denorm(self.outputlist["cho"], 1.0, 4.0),
-            'Reverb': self.limit(self.outputlist["rev"], 0.4),
+            'Reverb': self.toggle(self.outputlist["rev"], 0.4),
             'Reverb-param': self.denorm(self.outputlist["rev"], 0.0, 0.6),
         }
 
         self.output2 = {
-            'Human': self.limit(self.outputlist["Human"], 0.25),
-            'Machine': self.limit(self.outputlist["Machine"], 0.48),
-            'Music': self.limit(self.outputlist["Music"], 0.5),
-            'Nature': self.limit(self.outputlist["Nature"], 0.42),
-            'Beep': self.limit(self.outputlist["Beep"], 0.52),
-            'Other': self.limit(self.outputlist["Other"], 0.5),
+            'Human': self.toggle(self.outputlist["Human"], 0.25),
+            'Machine': self.toggle(self.outputlist["Machine"], 0.48),
+            'Music': self.toggle(self.outputlist["Music"], 0.5),
+            'Nature': self.toggle(self.outputlist["Nature"], 0.42),
+            'Beep': self.toggle(self.outputlist["Beep"], 0.52),
+            'Other': self.toggle(self.outputlist["Other"], 0.5),
         }
 
         logging.info("[%s,%s,%s]" % (self.inputlist, self.output, self.output2))
@@ -215,10 +215,10 @@ class SigProc:
             return variable * (max - min) + min
         return 0
 
-    def limit(self, variable, limit):
+    def toggle(self, variable, limit):
         if variable >= limit:
-            return 1
-        return 0
+            return True
+        return False
 
     def aging(self, key):
         for output_name, output_value in self.outputlist.iteritems():
@@ -259,7 +259,7 @@ class Chooser:
             if self.num_of_samples > 0:
                 for sample in self.sample_list:
                     if sample.category in self.sigproc.output2:
-                        if self.sigproc.output2[sample.category] == 1:
+                        if self.sigproc.output2[sample.category]:
                             samples.append(sample)
                 has_samples = len(samples)
                 if has_samples > 0:
@@ -357,24 +357,21 @@ class Modulator:
         # 'Chorus-param': between 0 and 5
         # 'Reverb-param': between 0 and 1
 
-        self.effectchain = {'Volume': 0, 'Volume-param': 0,
-                            'Speed': 0, 'Speed-param': 0,
-                            'Distortion': 0, 'Distortion-param': 0,
-                            'Frequency Shifter': 0, 'FS-param': 0,
-                            'Chorus': 0, 'Chorus-param': 0,
-                            'Reverb': 0, 'Reverb-param': 0}
+        self.effectchain = {'Volume': False, 'Volume-param': 0,
+                            'Speed': False, 'Speed-param': 0,
+                            'Distortion': False, 'Distortion-param': 0,
+                            'Frequency Shifter': False, 'FS-param': 0,
+                            'Chorus': False, 'Chorus-param': 0,
+                            'Reverb': False, 'Reverb-param': 0}
 
     def execute(self):
         if self.enable_ai:
             self.sigproc.execute()
             self.effectchain = self.sigproc.output
-            # print datetime.datetime.now()
-            # pprint.pprint(self.effectchain)
         self.chooser.execute()
         sample = self.chooser.output
         if sample is None:
             return
-        # print sample
         player = SfPlayer(sample.path, loop=False)
         denorm_noise = Noise(1e-24)
         if self.effectchain['Volume']:
