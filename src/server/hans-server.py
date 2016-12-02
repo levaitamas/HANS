@@ -41,14 +41,6 @@ class Sample:
 
 
 class SigProc:
-    class Variable:
-        def __init__(self, name, value):
-            self.name = name
-            self.value = value
-
-        def __str__(self):
-            return "'%s': %s" % (self.name, self.value)
-
     class Rule:
         def __init__(self, active, inactive, weight):
             self.active = active
@@ -61,14 +53,6 @@ class SigProc:
                    "'Weight': '%s'}" \
                    % (self.active, self.inactive, self.weight)
 
-    class WeightedValue:
-        def __init__(self, value, weight):
-            self.value = value
-            self.weight = weight
-
-        def __str__(self):
-            return "{'%s': %s}" % (self.value, self.weight)
-
     def __init__(self, audioin):
         self.yin = Yin(audioin)
         self.cen = Centroid(audioin)
@@ -79,44 +63,45 @@ class SigProc:
         self.rmslim = 0.6
         self.amplim = 0.8
         self.inputlist = {}
-        self.outputlist = []
+        self.outputlist = {}
         self.rulelist = []
-        self.set_inputs()
-        self.set_outputs()
-        self.set_rules()
         self.output = {}
         self.output2 = {}
+        self.set_inputlist()
+        self.set_outputlist()
+        self.set_rules()
 
     def execute(self):
-        self.set_inputs()
+        self.set_inputlist()
         self.calcout()
         self.output = {
-            'Volume': self.limit(self.outputlist[self.get_output("vol")].value, 0.2),
-            'Volume-param': self.denorm(self.outputlist[self.get_output("vol")].value, 0.4, 1.0),
-            'Speed': self.limit(self.outputlist[self.get_output("spe")].value, 0.6),
-            'Speed-param': random.choice([-1, 1]) * self.denorm(self.outputlist[self.get_output("spe")].value, 0.6, 1.4),
-            'Distortion': self.limit(self.outputlist[self.get_output("dis")].value, 0.4),
-            'Distortion-param': self.denorm(self.outputlist[self.get_output("dis")].value, 0.4, 1.0),
-            'Frequency Shifter': self.limit(self.outputlist[self.get_output("fre")].value, 0.6),
-            'FS-param': self.denorm(self.outputlist[self.get_output("fre")].value, -2000.0, 8000.0),
-            'Chorus': self.limit(self.outputlist[self.get_output("cho")].value, 0.4),
-            'Chorus-param': self.denorm(self.outputlist[self.get_output("cho")].value, 1.0, 4.0),
-            'Reverb': self.limit(self.outputlist[self.get_output("rev")].value, 0.4),
-            'Reverb-param': self.denorm(self.outputlist[self.get_output("rev")].value, 0.0, 0.6)
+            'Volume': self.limit(self.outputlist["vol"], 0.2),
+            'Volume-param': self.denorm(self.outputlist["vol"], 0.4, 1.0),
+            'Speed': self.limit(self.outputlist["spe"], 0.6),
+            'Speed-param': (random.choice([-1, 1]) *
+                            self.denorm(self.outputlist["spe"], 0.6, 1.4)),
+            'Distortion': self.limit(self.outputlist["dis"], 0.4),
+            'Distortion-param': self.denorm(self.outputlist["dis"], 0.4, 1.0),
+            'Frequency Shifter': self.limit(self.outputlist["fre"], 0.6),
+            'FS-param': self.denorm(self.outputlist["fre"], -2000.0, 8000.0),
+            'Chorus': self.limit(self.outputlist["cho"], 0.4),
+            'Chorus-param': self.denorm(self.outputlist["cho"], 1.0, 4.0),
+            'Reverb': self.limit(self.outputlist["rev"], 0.4),
+            'Reverb-param': self.denorm(self.outputlist["rev"], 0.0, 0.6),
         }
 
         self.output2 = {
-            'Human': self.limit(self.outputlist[self.get_output("Human")].value, 0.25),
-            'Machine': self.limit(self.outputlist[self.get_output("Machine")].value, 0.48),
-            'Music': self.limit(self.outputlist[self.get_output("Music")].value, 0.5),
-            'Nature': self.limit(self.outputlist[self.get_output("Nature")].value, 0.42),
-            'Beep': self.limit(self.outputlist[self.get_output("Beep")].value, 0.52),
-            'Other': self.limit(self.outputlist[self.get_output("Other")].value, 0.5),
+            'Human': self.limit(self.outputlist["Human"], 0.25),
+            'Machine': self.limit(self.outputlist["Machine"], 0.48),
+            'Music': self.limit(self.outputlist["Music"], 0.5),
+            'Nature': self.limit(self.outputlist["Nature"], 0.42),
+            'Beep': self.limit(self.outputlist["Beep"], 0.52),
+            'Other': self.limit(self.outputlist["Other"], 0.5),
         }
 
         logging.info("[%s,%s,%s]" % (self.inputlist, self.output, self.output2))
 
-    def set_inputs(self):
+    def set_inputlist(self):
         self.inputlist = {
             'yin': self.norm(self.yin.get(), 0, self.yinlim),
             'cen': self.norm(self.cen.get(), 0, self.cenlim),
@@ -185,50 +170,40 @@ class SigProc:
         self.rulelist.append(self.Rule("amp", "Other", 0.7))
         self.rulelist.append(self.Rule("yin", "Other", 0.3))
 
-    def set_outputs(self):
-        self.outputlist = []
+    def set_outputlist(self):
+        self.outputlist = {}
         for id in ['', '1', '2']:
-            self.outputlist.append(self.Variable("vol%s" % id, 0))
-            self.outputlist.append(self.Variable("spe%s" % id, 0))
-            self.outputlist.append(self.Variable("dis%s" % id, 0))
-            self.outputlist.append(self.Variable("fre%s" % id, 0))
-            self.outputlist.append(self.Variable("cho%s" % id, 0))
-            self.outputlist.append(self.Variable("rev%s" % id, 0))
-        self.outputlist.append(self.Variable("Other", 0))
-        self.outputlist.append(self.Variable("Music", 0))
-        self.outputlist.append(self.Variable("Human", 0))
-        self.outputlist.append(self.Variable("Nature", 0))
-        self.outputlist.append(self.Variable("Beep", 0))
-        self.outputlist.append(self.Variable("Machine", 0))
-
-    def get_output(self, name):
-        for output in self.outputlist:
-            if output.name == name:
-                return self.outputlist.index(output)
-        return None
+            self.outputlist["vol%s" % id] = 0
+            self.outputlist["spe%s" % id] = 0
+            self.outputlist["dis%s" % id] = 0
+            self.outputlist["fre%s" % id] = 0
+            self.outputlist["cho%s" % id] = 0
+            self.outputlist["rev%s" % id] = 0
+        self.outputlist["Other"] = 0
+        self.outputlist["Music"] = 0
+        self.outputlist["Human"] = 0
+        self.outputlist["Nature"] = 0
+        self.outputlist["Beep"] = 0
+        self.outputlist["Machine"] = 0
 
     def calcout(self):
-        templist = []
-        for output in self.outputlist:
+        for output_name, output_value in self.outputlist.iteritems():
+            templist = []
             for rule in self.rulelist:
-                if output.name == rule.inactive:
+                if output_name == rule.inactive:
                     for name, value in self.inputlist.iteritems():
                         if name == rule.active:
-                            templist.append(
-                                self.WeightedValue(value,
-                                                   rule.weight))
-                    for outputold in self.outputlist:
-                        if outputold.name == rule.active:
-                            templist.append(
-                                self.WeightedValue(outputold.value,
-                                                   rule.weight))
+                            templist.append((value, rule.weight))
+                    for outputold_name, outputold_value in \
+                        self.outputlist.iteritems():
+                        if outputold_name == rule.active:
+                            templist.append((outputold_value, rule.weight))
             if len(templist) != 0:
-                output.value = self.calcavg(templist)
-                self.aging(output)
-            templist = []
+                self.outputlist[output_name] = self.calcavg(templist)
+                self.aging(output_name)
 
     def norm(self, variable, min, max):
-        if variable < max and variable > min:
+        if (variable < max) and (variable > min):
             return (variable - min) / (max - min)
         elif variable <= min:
             return 0
@@ -243,20 +218,19 @@ class SigProc:
     def limit(self, variable, limit):
         if variable >= limit:
             return 1
-        else:
-            return 0
+        return 0
 
-    def aging(self, variable):
-        for output in self.outputlist:
-            if output.name[:-1] == variable.name:
-                if output.name[-1:] == "1":
-                    output.value = variable.value
-                elif output.name[-1:] == "2":
-                    output.value = 0.5 * variable.value
+    def aging(self, key):
+        for output_name, output_value in self.outputlist.iteritems():
+            if output_name[:-1] == key:
+                if output_name[-1:] == "1":
+                    self.outputlist[output_name] = self.outputlist[key]
+                elif output_name[-1:] == "2":
+                    self.outputlist[output_name] = 0.5 * self.outputlist[key]
 
-    def calcavg(self, sumlist):
-        numerator = sum([l.value * l.weight for l in sumlist])
-        denominator = sum([l.weight for l in sumlist])
+    def calcavg(self, tuplelist):
+        numerator = sum([l[0] * l[1] for l in tuplelist])
+        denominator = sum([l[1] for l in tuplelist])
         if (denominator != 0):
             return (float(numerator) / float(denominator))
         else:
