@@ -245,7 +245,8 @@ class Chooser:
         self.sigproc = sigproc
         self.seedgen = seed_gen
         self.sample_root = sample_root
-        self.sample_list = []
+        self.samples =  { 'Human': [], 'Machine': [], 'Music': [],
+                          'Nature': [], 'Beep': [], 'Other': []}
         self.num_of_samples = 0
         self.enable_ai = enable_ai
         self.output = None
@@ -255,15 +256,18 @@ class Chooser:
     def execute(self):
         self.seedgen.execute()
         samples = []
+        categories = []
         if self.enable_ai:
             if self.num_of_samples > 0:
-                for sample in self.sample_list:
-                    if sample.category in self.sigproc.output2:
-                        if self.sigproc.output2[sample.category]:
-                            samples.append(sample)
-                has_samples = len(samples)
-                if has_samples > 0:
-                    self.output = samples[(self.seedgen.output % has_samples)]
+                for category in self.sigproc.output2:
+                    if self.sigproc.output2[category]:
+                        categories.append(category)
+                if categories:
+                    samples = self.samples[random.choice(categories)]
+                    num_selected_samples = len(samples)
+                    if num_selected_samples > 0:
+                        self.output = samples[
+                            (self.seedgen.output % num_selected_samples)]
                 else:
                     self.output = None
             else:
@@ -280,24 +284,25 @@ class Chooser:
         else:
             logging.info("{'Path': null, 'Category': null}")
 
+    def calc_num_of_samples(self):
+        new_num_of_samples = 0
+        for cat, samples in self.samples.iteritems():
+            new_num_of_samples += len(samples)
+        self.num_of_samples = new_num_of_samples
+
     def set_sample_root(self, path):
+        self.samples =  { 'Human': [], 'Machine': [], 'Music': [],
+                          'Nature': [], 'Beep': [], 'Other': []}
         if os.path.isdir(path):
             self.sample_root = path
-            self.load_samples_from_folder(path)
-            self.sample_list = list(set(self.sample_list))
+            self.load_samples(path)
 
-    def load_samples_from_folder(self, folder):
+    def load_samples(self, folder):
         for root, dirnames, filenames in os.walk(folder):
             for filename in fnmatch.filter(filenames, '*.aiff'):
-                sample_path = os.path.join(root, filename)
-                self.sample_list.append(Sample(sample_path))
-        self.sample_list = list(set(self.sample_list))
-        self.num_of_samples = len(self.sample_list)
-
-    def remove_samples_from_folder(self, folder):
-        self.sample_list = [sample for sample in self.sample_list if
-                            os.path.dirname(sample.path) != folder]
-        self.num_of_samples = len(self.sample_list)
+                path = os.path.join(root, filename)
+                self.samples[os.path.basename(root)].append(Sample(path))
+        self.calc_num_of_samples()
 
     def toggle_ai(self, state):
         self.enable_ai = state
