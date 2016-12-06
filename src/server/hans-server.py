@@ -34,6 +34,8 @@ class Sample:
         assert path
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
+        self.audio = SndTable(path, chnl=1)
+        self.audio_rate = self.audio.getRate()
 
     def __str__(self):
         return "{'Path': '%s', 'Category': '%s'}" \
@@ -78,8 +80,7 @@ class SigProc:
             'Volume': self.toggle(self.outputlist["vol"], 0.2),
             'Volume-param': self.denorm(self.outputlist["vol"], 0.4, 1.0),
             'Speed': self.toggle(self.outputlist["spe"], 0.6),
-            'Speed-param': (random.choice([-1, 1]) *
-                            self.denorm(self.outputlist["spe"], 0.6, 1.4)),
+            'Speed-param': self.denorm(self.outputlist["spe"], 0.6, 1.4),
             'Distortion': self.toggle(self.outputlist["dis"], 0.4),
             'Distortion-param': self.denorm(self.outputlist["dis"], 0.4, 1.0),
             'FreqShift': self.toggle(self.outputlist["fre"], 0.6),
@@ -356,7 +357,7 @@ class Modulator:
 
         # Effect parameters:
         # 'Volume-param': between 0 and 1
-        # 'Speed-param': 1 - original; 0> - reverse; 0-1 slow; 1< - fast
+        # 'Speed-param': 1 - original; 0-1 slow; 1< - fast
         # 'Distortion-param': between 0 and 1
         # 'FS-param': amount of shifting in Hertz
         # 'Chorus-param': between 0 and 5
@@ -377,13 +378,15 @@ class Modulator:
         sample = self.chooser.output
         if sample is None:
             return
-        player = SfPlayer(sample.path, loop=False)
+        player = TableRead(table=sample.audio,
+                           freq=sample.audio_rate,
+                           loop=False).play()
         denorm_noise = Noise(1e-24)
         if self.effectchain['Volume']:
             player.setMul(self.effectchain['Volume-param'] or
                           random.random())
         if self.effectchain['Speed']:
-            player.setSpeed(self.effectchain['Speed-param'] or
+            player.setFreq(self.effectchain['Speed-param'] or
                             (0.5 + random.random()/2))
         if self.effectchain['Distortion']:
             distortion = Disto(player,
@@ -498,12 +501,12 @@ if __name__ == "__main__":
             server.setMidiInputDevice(inid)
     server.start()
 
-    midiproc = MidiProc()
     sigproc = SigProc(Input())
     seedgen = SeedGen()
     chooser = Chooser(seedgen, sigproc, sample_root=args.sampleroot)
     modulator = Modulator(chooser, sigproc)
     conmanager = ConnectionManager(args.host, args.port)
+    midiproc = MidiProc()
 
     logging.info('HANS-SERVER started')
 
