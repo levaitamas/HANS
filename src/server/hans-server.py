@@ -488,7 +488,7 @@ if __name__ == "__main__":
         # server.setVerbosity(8)
         logging.basicConfig(filename='hans-server.log',
                             format="{'Timestamp': '%(asctime)s', 'Message': %(message)s},",
-                            datefmt='%Y-%m-%d-%I-%M-%S',
+                            datefmt='%Y-%m-%d-%H-%M-%S',
                             level=logging.INFO)
 
     if args.midi:
