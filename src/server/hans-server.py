@@ -13,6 +13,7 @@ except ImportError:
 import SocketServer
 import argparse
 import fnmatch
+import logging
 import os
 import sys
 import random
@@ -33,40 +34,26 @@ class Sample:
         assert path
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
+        self.audio = SndTable(path, chnl=1)
+        self.audio_rate = self.audio.getRate()
 
-    def __repr__(self):
-        return ("\n" + self.path.split(os.sep)[-1] +
-                " [" + str(self.category) + "]")
+    def __str__(self):
+        return "{'Path': '%s', 'Category': '%s'}" \
+            % (self.path.split(os.sep)[-1], self.category)
 
 
 class SigProc:
-    class Variable:
-        def __init__(self, name, value):
-            self.name = name
-            self.value = value
-
-        def __repr__(self):
-            return "\n" + str(self.name) + ": " + str(self.value)
-
     class Rule:
         def __init__(self, active, inactive, weight):
             self.active = active
             self.inactive = inactive
             self.weight = weight
 
-        def __repr__(self):
-            return ("\n" + str(self.active) +
-                    " effects " + str(self.inactive) +
-                    " with " + str(self.weight))
-
-    class WeightedValue:
-        def __init__(self, value, weight):
-            self.value = value
-            self.weight = weight
-
-        def __repr__(self):
-            return ("\n" + str(self.value) +
-                    " with " + str(self.weight))
+        def __str__(self):
+            return "{'Active': '%s'," \
+                   "'Inactive': '%s'," \
+                   "'Weight': '%s'}" \
+                   % (self.active, self.inactive, self.weight)
 
     def __init__(self, audioin):
         self.yin = Yin(audioin)
@@ -77,48 +64,51 @@ class SigProc:
         self.cenlim = 6000
         self.rmslim = 0.6
         self.amplim = 0.8
-        self.inputlist = []
-        self.outputlist = []
+        self.inputlist = {}
+        self.outputlist = {}
         self.rulelist = []
-        self.set_inputs()
-        self.set_outputs()
-        self.set_rules()
         self.output = {}
         self.output2 = {}
+        self.set_inputlist()
+        self.set_outputlist()
+        self.set_rules()
 
     def execute(self):
-        self.set_inputs()
+        self.set_inputlist()
         self.calcout()
         self.output = {
-            'Volume': self.limit(self.outputlist[self.get_output("vol")].value, 0.4),
-            'Volume-param': self.denorm(self.outputlist[self.get_output("vol")].value, 0.2, 1.0),
-            'Speed': self.limit(self.outputlist[self.get_output("spe")].value, 0.6),
-            'Speed-param': random.choice([-1, 1]) * self.denorm(self.outputlist[self.get_output("spe")].value, 0.6, 1.4),
-            'Distortion': self.limit(self.outputlist[self.get_output("dis")].value, 0.4),
-            'Distortion-param': self.denorm(self.outputlist[self.get_output("dis")].value, 0.4, 1.0),
-            'Frequency Shifter': self.limit(self.outputlist[self.get_output("fre")].value, 0.6),
-            'FS-param': self.denorm(self.outputlist[self.get_output("fre")].value, -2000.0, 8000.0),
-            'Chorus': self.limit(self.outputlist[self.get_output("cho")].value, 0.4),
-            'Chorus-param': self.denorm(self.outputlist[self.get_output("cho")].value, 1.0, 4.0),
-            'Reverb': self.limit(self.outputlist[self.get_output("rev")].value, 0.4),
-            'Reverb-param': self.denorm(self.outputlist[self.get_output("rev")].value, 0.0, 0.6)
+            'Volume': self.toggle(self.outputlist["vol"], 0.2),
+            'Volume-param': self.denorm(self.outputlist["vol"], 0.4, 1.0),
+            'Speed': self.toggle(self.outputlist["spe"], 0.6),
+            'Speed-param': self.denorm(self.outputlist["spe"], 0.6, 1.4),
+            'Distortion': self.toggle(self.outputlist["dis"], 0.4),
+            'Distortion-param': self.denorm(self.outputlist["dis"], 0.4, 1.0),
+            'FreqShift': self.toggle(self.outputlist["fre"], 0.6),
+            'FS-param': self.denorm(self.outputlist["fre"], -2000.0, 8000.0),
+            'Chorus': self.toggle(self.outputlist["cho"], 0.4),
+            'Chorus-param': self.denorm(self.outputlist["cho"], 1.0, 4.0),
+            'Reverb': self.toggle(self.outputlist["rev"], 0.4),
+            'Reverb-param': self.denorm(self.outputlist["rev"], 0.0, 0.6),
         }
 
         self.output2 = {
-            'Human': self.limit(self.outputlist[self.get_output("Human")].value, 0.42),
-            'Machine': self.limit(self.outputlist[self.get_output("Machine")].value, 0.42),
-            'Music': self.limit(self.outputlist[self.get_output("Music")].value, 0.42),
-            'Nature': self.limit(self.outputlist[self.get_output("Nature")].value, 0.42),
-            'Beep': self.limit(self.outputlist[self.get_output("Beep")].value, 0.42),
-            'Other': self.limit(self.outputlist[self.get_output("Other")].value, 0.5),
+            'Human': self.toggle(self.outputlist["Human"], 0.25),
+            'Machine': self.toggle(self.outputlist["Machine"], 0.48),
+            'Music': self.toggle(self.outputlist["Music"], 0.5),
+            'Nature': self.toggle(self.outputlist["Nature"], 0.42),
+            'Beep': self.toggle(self.outputlist["Beep"], 0.52),
+            'Other': self.toggle(self.outputlist["Other"], 0.5),
         }
 
-    def set_inputs(self):
-        self.inputlist = []
-        self.inputlist.append(self.Variable("yin", self.norm(self.yin.get(), 0, self.yinlim)))
-        self.inputlist.append(self.Variable("cen", self.norm(self.cen.get(), 0, self.cenlim)))
-        self.inputlist.append(self.Variable("rms", self.norm(self.rms.get(), 0, self.rmslim)))
-        self.inputlist.append(self.Variable("amp", self.norm(self.amp.get(), 0, self.amplim)))
+        logging.info("[%s,%s,%s]" % (self.inputlist, self.output, self.output2))
+
+    def set_inputlist(self):
+        self.inputlist = {
+            'yin': self.norm(self.yin.get(), 0, self.yinlim),
+            'cen': self.norm(self.cen.get(), 0, self.cenlim),
+            'rms': self.norm(self.rms.get(), 0, self.rmslim),
+            'amp': self.norm(self.amp.get(), 0, self.amplim),
+        }
 
     def set_imputlims(self, yinlim, cenlim, rmslim, amplim):
         self.yinlim = yinlim
@@ -129,13 +119,12 @@ class SigProc:
     def set_rules(self):
         self.rulelist = []
         for i in xrange(1, 3):
-            id = str(i)
-            self.rulelist.append(self.Rule("vol"+id, "vol", 1.0/i))
-            self.rulelist.append(self.Rule("spe"+id, "spe", 1.0/i))
-            self.rulelist.append(self.Rule("dis"+id, "dis", 1.0/i))
-            self.rulelist.append(self.Rule("fre"+id, "fre", 1.0/i))
-            self.rulelist.append(self.Rule("cho"+id, "cho", 1.0/i))
-            self.rulelist.append(self.Rule("rev"+id, "rev", 1.0/i))
+            self.rulelist.append(self.Rule("vol%s" % id, "vol", 1.0/i))
+            self.rulelist.append(self.Rule("spe%s" % id, "spe", 1.0/i))
+            self.rulelist.append(self.Rule("dis%s" % id, "dis", 1.0/i))
+            self.rulelist.append(self.Rule("fre%s" % id, "fre", 1.0/i))
+            self.rulelist.append(self.Rule("cho%s" % id, "cho", 1.0/i))
+            self.rulelist.append(self.Rule("rev%s" % id, "rev", 1.0/i))
 
         self.rulelist.append(self.Rule("yin", "spe", 2.00))
         self.rulelist.append(self.Rule("yin", "dis", 0.70))
@@ -170,6 +159,7 @@ class SigProc:
 
         self.rulelist.append(self.Rule("amp", "Music", 0.7))
         self.rulelist.append(self.Rule("yin", "Music", 0.7))
+        self.rulelist.append(self.Rule("cen", "Music", 0.6))
 
         self.rulelist.append(self.Rule("amp", "Nature", 0.7))
         self.rulelist.append(self.Rule("cen", "Nature", 0.85))
@@ -181,50 +171,40 @@ class SigProc:
         self.rulelist.append(self.Rule("amp", "Other", 0.7))
         self.rulelist.append(self.Rule("yin", "Other", 0.3))
 
-    def set_outputs(self):
-        self.outputlist = []
+    def set_outputlist(self):
+        self.outputlist = {}
         for id in ['', '1', '2']:
-            self.outputlist.append(self.Variable("vol"+id, 0))
-            self.outputlist.append(self.Variable("spe"+id, 0))
-            self.outputlist.append(self.Variable("dis"+id, 0))
-            self.outputlist.append(self.Variable("fre"+id, 0))
-            self.outputlist.append(self.Variable("cho"+id, 0))
-            self.outputlist.append(self.Variable("rev"+id, 0))
-        self.outputlist.append(self.Variable("Other", 0))
-        self.outputlist.append(self.Variable("Music", 0))
-        self.outputlist.append(self.Variable("Human", 0))
-        self.outputlist.append(self.Variable("Nature", 0))
-        self.outputlist.append(self.Variable("Beep", 0))
-        self.outputlist.append(self.Variable("Machine", 0))
-
-    def get_output(self, name):
-        for output in self.outputlist:
-            if output.name == name:
-                return self.outputlist.index(output)
-        return None
+            self.outputlist["vol%s" % id] = 0
+            self.outputlist["spe%s" % id] = 0
+            self.outputlist["dis%s" % id] = 0
+            self.outputlist["fre%s" % id] = 0
+            self.outputlist["cho%s" % id] = 0
+            self.outputlist["rev%s" % id] = 0
+        self.outputlist["Other"] = 0
+        self.outputlist["Music"] = 0
+        self.outputlist["Human"] = 0
+        self.outputlist["Nature"] = 0
+        self.outputlist["Beep"] = 0
+        self.outputlist["Machine"] = 0
 
     def calcout(self):
-        templist = []
-        for output in self.outputlist:
-            for rule in self.rulelist:
-                if output.name == rule.inactive:
-                    for input in self.inputlist:
-                        if input.name == rule.active:
-                            templist.append(
-                                self.WeightedValue(input.value,
-                                                   rule.weight))
-                    for outputold in self.outputlist:
-                        if outputold.name == rule.active:
-                            templist.append(
-                                self.WeightedValue(outputold.value,
-                                                   rule.weight))
-            if len(templist) != 0:
-                output.value = self.calcavg(templist)
-                self.aging(output)
+        for output_name, output_value in self.outputlist.iteritems():
             templist = []
+            for rule in self.rulelist:
+                if output_name == rule.inactive:
+                    for name, value in self.inputlist.iteritems():
+                        if name == rule.active:
+                            templist.append((value, rule.weight))
+                    for outputold_name, outputold_value in \
+                        self.outputlist.iteritems():
+                        if outputold_name == rule.active:
+                            templist.append((outputold_value, rule.weight))
+            if len(templist) != 0:
+                self.outputlist[output_name] = self.calcavg(templist)
+                self.aging(output_name)
 
     def norm(self, variable, min, max):
-        if variable < max and variable > min:
+        if (variable < max) and (variable > min):
             return (variable - min) / (max - min)
         elif variable <= min:
             return 0
@@ -236,23 +216,22 @@ class SigProc:
             return variable * (max - min) + min
         return 0
 
-    def limit(self, variable, limit):
+    def toggle(self, variable, limit):
         if variable >= limit:
-            return 1
-        else:
-            return 0
+            return True
+        return False
 
-    def aging(self, variable):
-        for output in self.outputlist:
-            if output.name[:-1] == variable.name:
-                if output.name[-1:] == "1":
-                    output.value = variable.value
-                elif output.name[-1:] == "2":
-                    output.value = 0.5 * variable.value
+    def aging(self, key):
+        for output_name, output_value in self.outputlist.iteritems():
+            if output_name[:-1] == key:
+                if output_name[-1:] == "1":
+                    self.outputlist[output_name] = self.outputlist[key]
+                elif output_name[-1:] == "2":
+                    self.outputlist[output_name] = 0.5 * self.outputlist[key]
 
-    def calcavg(self, sumlist):
-        numerator = sum([l.value * l.weight for l in sumlist])
-        denominator = sum([l.weight for l in sumlist])
+    def calcavg(self, tuplelist):
+        numerator = sum([l[0] * l[1] for l in tuplelist])
+        denominator = sum([l[1] for l in tuplelist])
         if (denominator != 0):
             return (float(numerator) / float(denominator))
         else:
@@ -267,7 +246,8 @@ class Chooser:
         self.sigproc = sigproc
         self.seedgen = seed_gen
         self.sample_root = sample_root
-        self.sample_list = []
+        self.samples =  { 'Human': [], 'Machine': [], 'Music': [],
+                          'Nature': [], 'Beep': [], 'Other': []}
         self.num_of_samples = 0
         self.enable_ai = enable_ai
         self.output = None
@@ -277,17 +257,18 @@ class Chooser:
     def execute(self):
         self.seedgen.execute()
         samples = []
+        categories = []
         if self.enable_ai:
             if self.num_of_samples > 0:
-                for sample in self.sample_list:
-                    if sample.category in self.sigproc.output2:
-                        # Sample categories: {'Human': 0, 'Machine': 0,
-                        # 'Beep': 0, 'Nature': 0, 'Music': 0, 'Other': 0}
-                        if self.sigproc.output2[sample.category] == 1:
-                            samples.append(sample)
-                has_samples = len(samples)
-                if has_samples > 0:
-                    self.output = samples[(self.seedgen.output % has_samples)]
+                for category in self.sigproc.output2:
+                    if self.sigproc.output2[category]:
+                        categories.append(category)
+                if categories:
+                    samples = self.samples[random.choice(categories)]
+                    num_selected_samples = len(samples)
+                    if num_selected_samples > 0:
+                        self.output = samples[
+                            (self.seedgen.output % num_selected_samples)]
                 else:
                     self.output = None
             else:
@@ -299,24 +280,30 @@ class Chooser:
             else:
                 self.output = None
 
+        if self.output:
+            logging.info(str(self.output))
+        else:
+            logging.info("{'Path': null, 'Category': null}")
+
+    def calc_num_of_samples(self):
+        new_num_of_samples = 0
+        for cat, samples in self.samples.iteritems():
+            new_num_of_samples += len(samples)
+        self.num_of_samples = new_num_of_samples
+
     def set_sample_root(self, path):
+        self.samples =  { 'Human': [], 'Machine': [], 'Music': [],
+                          'Nature': [], 'Beep': [], 'Other': []}
         if os.path.isdir(path):
             self.sample_root = path
-            self.load_samples_from_folder(path)
-            self.sample_list = list(set(self.sample_list))
+            self.load_samples(path)
 
-    def load_samples_from_folder(self, folder):
+    def load_samples(self, folder):
         for root, dirnames, filenames in os.walk(folder):
             for filename in fnmatch.filter(filenames, '*.aiff'):
-                sample_path = os.path.join(root, filename)
-                self.sample_list.append(Sample(sample_path))
-        self.sample_list = list(set(self.sample_list))
-        self.num_of_samples = len(self.sample_list)
-
-    def remove_samples_from_folder(self, folder):
-        self.sample_list = [sample for sample in self.sample_list if
-                            os.path.dirname(sample.path) != folder]
-        self.num_of_samples = len(self.sample_list)
+                path = os.path.join(root, filename)
+                self.samples[os.path.basename(root)].append(Sample(path))
+        self.calc_num_of_samples()
 
     def toggle_ai(self, state):
         self.enable_ai = state
@@ -370,37 +357,36 @@ class Modulator:
 
         # Effect parameters:
         # 'Volume-param': between 0 and 1
-        # 'Speed-param': 1 - original; 0> - reverse; 0-1 slow; 1< - fast
+        # 'Speed-param': 1 - original; 0-1 slow; 1< - fast
         # 'Distortion-param': between 0 and 1
         # 'FS-param': amount of shifting in Hertz
         # 'Chorus-param': between 0 and 5
         # 'Reverb-param': between 0 and 1
 
-        self.effectchain = {'Volume': 0, 'Volume-param': 0,
-                            'Speed': 0, 'Speed-param': 0,
-                            'Distortion': 0, 'Distortion-param': 0,
-                            'Frequency Shifter': 0, 'FS-param': 0,
-                            'Chorus': 0, 'Chorus-param': 0,
-                            'Reverb': 0, 'Reverb-param': 0}
+        self.effectchain = {'Volume': False, 'Volume-param': 0,
+                            'Speed': False, 'Speed-param': 0,
+                            'Distortion': False, 'Distortion-param': 0,
+                            'FreqShift': False, 'FS-param': 0,
+                            'Chorus': False, 'Chorus-param': 0,
+                            'Reverb': False, 'Reverb-param': 0}
 
     def execute(self):
         if self.enable_ai:
             self.sigproc.execute()
             self.effectchain = self.sigproc.output
-            # print datetime.datetime.now()
-            # pprint.pprint(self.effectchain)
         self.chooser.execute()
         sample = self.chooser.output
         if sample is None:
             return
-        # print sample
-        player = SfPlayer(sample.path, loop=False)
+        player = TableRead(table=sample.audio,
+                           freq=sample.audio_rate,
+                           loop=False).play()
         denorm_noise = Noise(1e-24)
         if self.effectchain['Volume']:
             player.setMul(self.effectchain['Volume-param'] or
                           random.random())
         if self.effectchain['Speed']:
-            player.setSpeed(self.effectchain['Speed-param'] or
+            player.setFreq(self.effectchain['Speed-param'] or
                             (0.5 + random.random()/2))
         if self.effectchain['Distortion']:
             distortion = Disto(player,
@@ -409,7 +395,7 @@ class Modulator:
                                slope=0.7)
         else:
             distortion = player
-        if self.effectchain['Frequency Shifter']:
+        if self.effectchain['FreqShift']:
             freqshift = FreqShift(distortion + denorm_noise,
                                   self.effectchain['FS-param'] or
                                   random.random() * 220)
@@ -449,6 +435,7 @@ class NetConHandler(SocketServer.BaseRequestHandler):
         data = self.request[0].strip()
         if data == 'solo':
             threading.Thread(target=doTheWookieeBoogie).start()
+            logging.info('SOLO request')
         elif data == 'samplereload':
             chooser.set_sample_root(chooser.sample_root)
         elif data.startswith("{'amp':"):
@@ -498,7 +485,11 @@ if __name__ == "__main__":
         server = Server(duplex=1, audio='jack', jackname='HANS').boot()
 
     if args.verbose:
-        server.setVerbosity(8)
+        # server.setVerbosity(8)
+        logging.basicConfig(filename='hans-server.log',
+                            format="{'Timestamp': '%(asctime)s', 'Message': '%(message)s'}",
+                            datefmt='%Y-%m-%d %I:%M:%S',
+                            level=logging.INFO)
 
     if args.midi:
         server.setMidiInputDevice(args.midi)
@@ -510,11 +501,13 @@ if __name__ == "__main__":
             server.setMidiInputDevice(inid)
     server.start()
 
-    midiproc = MidiProc()
     sigproc = SigProc(Input())
     seedgen = SeedGen()
     chooser = Chooser(seedgen, sigproc, sample_root=args.sampleroot)
     modulator = Modulator(chooser, sigproc)
     conmanager = ConnectionManager(args.host, args.port)
+    midiproc = MidiProc()
+
+    logging.info('HANS-SERVER started')
 
     conmanager.server.serve_forever()
