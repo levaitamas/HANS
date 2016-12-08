@@ -84,7 +84,7 @@ class SigProc:
             'Distortion': self.toggle(self.outputlist["dis"], 0.4),
             'Distortion-param': self.denorm(self.outputlist["dis"], 0.4, 1.0),
             'FreqShift': self.toggle(self.outputlist["fre"], 0.6),
-            'FS-param': self.denorm(self.outputlist["fre"], -2000.0, 8000.0),
+            'FreqShift-param': self.denorm(self.outputlist["fre"], -2000.0, 8000.0),
             'Chorus': self.toggle(self.outputlist["cho"], 0.4),
             'Chorus-param': self.denorm(self.outputlist["cho"], 1.0, 4.0),
             'Reverb': self.toggle(self.outputlist["rev"], 0.4),
@@ -359,14 +359,14 @@ class Modulator:
         # 'Volume-param': between 0 and 1
         # 'Speed-param': 1 - original; 0-1 slow; 1< - fast
         # 'Distortion-param': between 0 and 1
-        # 'FS-param': amount of shifting in Hertz
+        # 'FreqShift-param': amount of shifting in Hertz
         # 'Chorus-param': between 0 and 5
         # 'Reverb-param': between 0 and 1
 
         self.effectchain = {'Volume': False, 'Volume-param': 0,
                             'Speed': False, 'Speed-param': 0,
                             'Distortion': False, 'Distortion-param': 0,
-                            'FreqShift': False, 'FS-param': 0,
+                            'FreqShift': False, 'FreqShift-param': 0,
                             'Chorus': False, 'Chorus-param': 0,
                             'Reverb': False, 'Reverb-param': 0}
 
@@ -397,7 +397,7 @@ class Modulator:
             distortion = player
         if self.effectchain['FreqShift']:
             freqshift = FreqShift(distortion + denorm_noise,
-                                  self.effectchain['FS-param'] or
+                                  self.effectchain['FreqShift-param'] or
                                   random.random() * 220)
         else:
             freqshift = distortion + denorm_noise
@@ -435,7 +435,7 @@ class NetConHandler(SocketServer.BaseRequestHandler):
         data = self.request[0].strip()
         if data == 'solo':
             threading.Thread(target=doTheWookieeBoogie).start()
-            logging.info('SOLO request')
+            logging.info('\'SOLO request\'')
         elif data == 'samplereload':
             chooser.set_sample_root(chooser.sample_root)
         elif data.startswith("{'amp':"):
@@ -487,8 +487,8 @@ if __name__ == "__main__":
     if args.verbose:
         # server.setVerbosity(8)
         logging.basicConfig(filename='hans-server.log',
-                            format="{'Timestamp': '%(asctime)s', 'Message': '%(message)s'}",
-                            datefmt='%Y-%m-%d %I:%M:%S',
+                            format="{'Timestamp': '%(asctime)s', 'Message': %(message)s},",
+                            datefmt='%Y-%m-%d-%I-%M-%S',
                             level=logging.INFO)
 
     if args.midi:
@@ -508,6 +508,6 @@ if __name__ == "__main__":
     conmanager = ConnectionManager(args.host, args.port)
     midiproc = MidiProc()
 
-    logging.info('HANS-SERVER started')
+    logging.info('\'HANS-SERVER started\'')
 
     conmanager.server.serve_forever()

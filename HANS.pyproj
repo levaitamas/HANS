@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{1bebeccd-4da6-4c1e-b0dd-9879a648d1d7}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>src\web\hans_web.py</StartupFile>
+    <StartupFile>util\hans-server-log-reader.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -13,7 +13,7 @@
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterId />
     <InterpreterVersion />
-    <CommandLineArguments>-t</CommandLineArguments>
+    <CommandLineArguments>-v -m 99</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
@@ -34,14 +34,19 @@
     <Content Include="doc\papers\BMEGT43A066\pics\hans_neon_1x2.jpg" />
     <Content Include="doc\papers\BMEGT43A066\pics\hans_neon_1x2.png" />
     <Content Include="doc\papers\BMEGT43A066\pics\snapshot.jpg" />
+    <Content Include="logs\161118-harmadikemberfesztival\hans-server.log" />
+    <Content Include="logs\161118-harmadikemberfesztival\hans-web.log" />
     <Content Include="src\web\static\hans.js" />
     <Content Include="src\web\templates\index.html" />
     <Content Include="src\web\static\style.css" />
+    <Content Include="util\concert2ytvideo.sh" />
+    <Content Include="util\session2ytvideo.sh" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="src\gui\hans-gui.py" />
     <Compile Include="src\server\hans-server.py" />
     <Compile Include="src\web\hans_web.py" />
+    <Compile Include="util\hans-server-log-reader.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="doc\" />
@@ -49,12 +54,15 @@
     <Folder Include="doc\papers\" />
     <Folder Include="doc\papers\BMEGT43A066\" />
     <Folder Include="doc\papers\BMEGT43A066\pics" />
+    <Folder Include="logs\" />
+    <Folder Include="logs\161118-harmadikemberfesztival\" />
     <Folder Include="src\" />
     <Folder Include="src\gui" />
     <Folder Include="src\web\" />
     <Folder Include="src\server" />
     <Folder Include="src\web\static\" />
     <Folder Include="src\web\templates\" />
+    <Folder Include="util\" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
