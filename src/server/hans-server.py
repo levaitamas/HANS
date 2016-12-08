@@ -222,12 +222,9 @@ class SigProc:
         return False
 
     def aging(self, key):
-        for output_name, output_value in self.outputlist.iteritems():
-            if output_name[:-1] == key:
-                if output_name[-1:] == "1":
-                    self.outputlist[output_name] = self.outputlist[key]
-                elif output_name[-1:] == "2":
-                    self.outputlist[output_name] = 0.5 * self.outputlist[key]
+        if "%s2" % key in self.outputlist:
+            self.outputlist["%s2" % key] = 0.5 * self.outputlist[("%s2" % key)]
+            self.outputlist["%s1" % key] = self.outputlist[key]
 
     def calcavg(self, tuplelist):
         numerator = sum([l[0] * l[1] for l in tuplelist])
