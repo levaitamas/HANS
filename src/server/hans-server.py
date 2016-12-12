@@ -477,9 +477,9 @@ if __name__ == "__main__":
                           "to version 0.7.6 or later.")
 
     if sys.platform.startswith("win"):
-        server = Server(duplex=1).boot()
+        server = Server(duplex=1)
     else:
-        server = Server(duplex=1, audio='jack', jackname='HANS').boot()
+        server = Server(duplex=1, audio='jack', jackname='HANS')
 
     if args.verbose:
         # server.setVerbosity(8)
@@ -496,6 +496,7 @@ if __name__ == "__main__":
         while (inid > pm_count_devices()-1 and inid != 99) or inid < 0:
             inid = input("Please select input ID [99 for all]: ")
             server.setMidiInputDevice(inid)
+    server.boot()
     server.start()
 
     sigproc = SigProc(Input())
