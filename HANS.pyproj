@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{1bebeccd-4da6-4c1e-b0dd-9879a648d1d7}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>src\server\hans-server.py</StartupFile>
+    <StartupFile>util\drum-brain.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -13,7 +13,7 @@
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterId />
     <InterpreterVersion />
-    <CommandLineArguments>-v -m 99</CommandLineArguments>
+    <CommandLineArguments>-m 99</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
@@ -46,6 +46,9 @@
     <Compile Include="src\gui\hans-gui.py" />
     <Compile Include="src\server\hans-server.py" />
     <Compile Include="src\web\hans_web.py" />
+    <Compile Include="util\drum-brain.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="util\hans-server-log-reader.py" />
   </ItemGroup>
   <ItemGroup>
