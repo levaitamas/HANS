@@ -3,21 +3,19 @@
 """
 HANS DRUM UTIL
 
-Copyright (C) 2016-     Richárd Beregi <richard.beregi@sztaki.mta.hu>
-Copyright (C) 2016-     Tamás Lévai    <levait@tmit.bme.hu>
+Copyright (C) 2016-     Richï¿½rd Beregi <richard.beregi@sztaki.mta.hu>
+Copyright (C) 2016-     Tamï¿½s Lï¿½vai    <levait@tmit.bme.hu>
 """
 try:
     from pyo import *
 except ImportError:
     raise SystemError("Python-Pyo not found. Please, install it.")
-import SocketServer
 import argparse
 import fnmatch
-import logging
 import os
 import sys
 import random
-import threading
+import wx
 import time
 
 
@@ -76,41 +74,41 @@ def handle_midievent(status, note, velocity):
     if 144 <= status <= 159:
         # filter kick drum
         if note == 36:
-            midinote2sample('kick', low, high)
+            midinote2sample('kick', velocity, low, high)
         # filter snare drum
         elif note == 38:
-            midinote2sample('snare', low, high)
+            midinote2sample('snare', velocity, low, high)
         # filter tom hi
         elif note == 48:
-            midinote2sample('tom1', low, high)
+            midinote2sample('tom1', velocity, low, high)
         # filter tom mid
         elif note == 45:
-            midinote2sample('tom2', low, high)
+            midinote2sample('tom2', velocity, low, high)
         # filter tom low
         elif note == 43:
-            midinote2sample('tom3', low, high)
+            midinote2sample('tom3', velocity, low, high)
         # filter crash
         elif note == 49:
-            midinote2sample('crash', low, high)
+            midinote2sample('crash', velocity, low, high)
         # filter ride
         elif note == 51:
-            midinote2sample('ride', low, high) 
+            midinote2sample('ride', velocity, low, high) 
         # filter hh open
         elif note == 46:
-            midinote2sample('hhO', low, high) 
+            midinote2sample('hhO', velocity, low, high) 
         # filter hh close
         elif note == 42:
-            midinote2sample('hhC', low, high)
+            midinote2sample('hhC', velocity, low, high)
         # filter foot closed
         elif note == 44:
-            midinote2sample('foot', low, high)
+            midinote2sample('foot', velocity, low, high)
     #filter program change
     elif 192 <= status <= 207:
         chooser.set_kit('DK%s' % note)
     #filter control change
     #elif 176 <= status <= 191 and note == 4:        
 
-def midinote2sample(pad, low, high):
+def midinote2sample(pad, velocity, low, high):
     if velocity <= low:
         chooser.execute('%sL' % pad)
     elif velocity >= high:
@@ -192,26 +190,73 @@ class HansDrumFrame(wx.Frame):
                           title='HANS DRUM')
         self.chooser = chooser
         self.modulator = modulator
-        self.SetMinSize(wx.Size(1150, 500))
+        self.SetMinSize(wx.Size(650, 500))
+        #self.SetDimensions(100, 100, 650, 500)
         self.initUI()
-        self.Centre()
+        #self.Centre()
         self.Show()
 
     def initUI(self):
         panel = wx.Panel(self)
-        panelBox1 = wx.BoxSizer(wx.HORIZONTAL)
-        panelBox1.SetMinSize(wx.Size(700, 100))
-
-        self.prevButton = wx.Button(panel, label='PREV',
-                                    size=wx.Size(100, 80))
-        self.prevButton.Bind(wx.EVT_BUTTON, self.buttonDKChange)
-        self.nextButton = wx.Button(panel, label='NEXT',
-                                    size=wx.Size(100, 80))
-        self.nextButton.Bind(wx.EVT_BUTTON, self.buttonDKChange)
-        panelBox1.Add(self.prevButton)
-        panelBox1.Add(self.nextButton)
-        panelBox1.AddSpacer(20)
-
+        font1 = wx.Font(22, wx.MODERN, wx.NORMAL, wx.BOLD)
+        font2 = wx.Font(18, wx.MODERN, wx.NORMAL, wx.BOLD)
+        font3 = wx.Font(14, wx.TELETYPE, wx.NORMAL, wx.BOLD)
+        
+        # WX Widget Buttons
+        self.dk1Button = wx.Button(panel, label='DK1',
+                                    size=wx.Size(50, 100))
+        self.dk2Button = wx.Button(panel, label='DK2',
+                                    size=wx.Size(50, 100))
+        self.dk3Button = wx.Button(panel, label='DK3',
+                                    size=wx.Size(50, 100))
+        self.dk4Button = wx.Button(panel, label='DK4',
+                                    size=wx.Size(50, 100))
+        self.dk5Button = wx.Button(panel, label='DK5',
+                                    size=wx.Size(50, 100))
+        self.dk6Button = wx.Button(panel, label='DK6',
+                                    size=wx.Size(50, 100))
+        self.dk1Button.SetFont(font1)
+        self.dk2Button.SetFont(font1)		
+        self.dk3Button.SetFont(font1)		
+        self.dk4Button.SetFont(font1)		
+        self.dk5Button.SetFont(font1)		
+        self.dk6Button.SetFont(font1)
+        self.Bind(wx.EVT_BUTTON, self.buttonDKChange)
+        
+        # WX Widget ToggleButton		
+        self.voltb = wx.ToggleButton(panel, -1, 
+        	 label='Volume',
+        	 name='Volume',
+        	 size=(50,100))
+        self.spetb = wx.ToggleButton(panel, -1,
+        	 label='Speed',
+        	 name='Speed',
+        	 size=(50,100))
+        self.distb = wx.ToggleButton(panel, -1, 
+        	 label='Distor\ntion',
+        	 name='Distortion',
+        	 size=(50,100))
+        self.fretb = wx.ToggleButton(panel, -1, 
+        	 label='Freq\nShift',
+        	 name='FreqShift',
+        	 size=(50,100))
+        self.chotb = wx.ToggleButton(panel, -1, 
+        	 label='Chorus',
+        	 name='Chorus',
+        	 size=(50,100))
+        self.revtb = wx.ToggleButton(panel, -1, 
+        	 label='Reverb',
+        	 name='Reverb',
+        	 size=(50,100))
+        self.voltb.SetFont(font2)
+        self.spetb.SetFont(font2)
+        self.distb.SetFont(font2)
+        self.fretb.SetFont(font2)
+        self.chotb.SetFont(font2)
+        self.revtb.SetFont(font2)
+        self.Bind(wx.EVT_TOGGLEBUTTON, self.tbuttonUpdate)
+        
+        # WX Widget Sliders		 
         self.volslide = wx.Slider(panel, -1, 100.0, 0.0, 200.0,
                                   size=(80, -1),
                                   name=('Volume-param'),
@@ -236,60 +281,114 @@ class HansDrumFrame(wx.Frame):
                                   size=(80, -1),
                                   name=('Reverb-param'),
                                   style=wx.SL_INVERSE| wx.SL_VERTICAL | wx.SL_VALUE_LABEL)
+        self.volslide.SetFont(font2)
+        self.speslide.SetFont(font2)
+        self.disslide.SetFont(font2)
+        self.freslide.SetFont(font2)
+        self.choslide.SetFont(font2)
+        self.revslide.SetFont(font2)
+		
+        volcol = wx.BoxSizer(wx.HORIZONTAL)
+        volcol.AddStretchSpacer(20)
+        volcol.Add(self.volslide, flag=wx.EXPAND|wx.CENTER)
+        volcol.SetMinSize(wx.Size(80, -1))
+        volcol.AddStretchSpacer(20)		
+        specol = wx.BoxSizer(wx.HORIZONTAL)
+        specol.AddStretchSpacer(20)
+        specol.Add(self.speslide, flag=wx.EXPAND|wx.CENTER)
+        specol.SetMinSize(wx.Size(80, -1))
+        specol.AddStretchSpacer(20)		
+        discol = wx.BoxSizer(wx.HORIZONTAL)
+        discol.AddStretchSpacer(20)
+        discol.Add(self.disslide, flag=wx.EXPAND|wx.CENTER)
+        discol.SetMinSize(wx.Size(80, -1))
+        discol.AddStretchSpacer(20)		
+        frecol = wx.BoxSizer(wx.HORIZONTAL)
+        frecol.AddStretchSpacer(20)
+        frecol.Add(self.freslide, flag=wx.EXPAND|wx.CENTER)
+        frecol.SetMinSize(wx.Size(80, -1))
+        frecol.AddStretchSpacer(20)		
+        chocol = wx.BoxSizer(wx.HORIZONTAL)
+        chocol.AddStretchSpacer(20)
+        chocol.Add(self.choslide, flag=wx.EXPAND|wx.CENTER)
+        chocol.SetMinSize(wx.Size(80, -1))
+        chocol.AddStretchSpacer(20)		
+        revcol = wx.BoxSizer(wx.HORIZONTAL)
+        revcol.AddStretchSpacer(20)
+        revcol.Add(self.revslide, flag=wx.EXPAND|wx.CENTER)
+        revcol.SetMinSize(wx.Size(80, -1))
+        revcol.AddStretchSpacer(20)
+		
         self.Bind(wx.EVT_SLIDER, self.sliderUpdate)
 
-        self.vollab = wx.StaticText(panel, -1, "Volume",
-                                    size=(50, -1),
-                                    style=0, name=('vollab'))
-        self.spelab = wx.StaticText(panel, -1, "Speed",
-                                    size=(50, -1),
-                                    style=0, name=('spelab'))
-        self.dislab = wx.StaticText(panel, -1, "Distortion",
-                                    size=(55, -1),
-                                    style=0, name=('cenlab'))
-        self.frelab = wx.StaticText(panel, -1, "Freq\tShifter",
-                                    size=(50, -1),
-                                    style=0, name=('frelab'))
-        self.cholab = wx.StaticText(panel, -1, "Chorus",
-                                    size=(50, -1),
-                                    style=0, name=('cholab'))
-        self.revlab = wx.StaticText(panel, -1, "Reverb",
-                                    size=(50, -1),
-                                    style=0, name=('revlab'))
+        self.timer = wx.Timer(panel, 1)
+        self.timer.Start(1000)
+        wx.EVT_TIMER(panel, 1, self.on_timer)
+        self.ctime = wx.TextCtrl(panel, -1, time.strftime('%M:%S'), (0, -1), (70, -1), wx.ALIGN_RIGHT)
+        self.ctime.Enable(False)
+        self.ctime.SetFont(font3)
+        timebox = wx.BoxSizer(wx.HORIZONTAL)
+        timebox.AddStretchSpacer(8)
+        timebox.Add(self.ctime, flag=wx.EXPAND|wx.ALIGN_RIGHT)
+        timebox.SetMinSize(wx.Size(20, -1))
+        timebox.AddStretchSpacer(2)
         
-        panelBox2 = wx.BoxSizer(wx.HORIZONTAL)
-        panelBox2.SetMinSize(wx.Size(700, 300))
-        panelBox2.Add(self.vollab, flag=wx.EXPAND)
-        panelBox2.Add(self.volslide, flag=wx.EXPAND)
-        panelBox2.AddSpacer(10)
-        panelBox2.Add(self.spelab, flag=wx.EXPAND)
-        panelBox2.Add(self.speslide, flag=wx.EXPAND)
-        panelBox2.AddSpacer(10)
-        panelBox2.Add(self.dislab, flag=wx.EXPAND)
-        panelBox2.Add(self.disslide, flag=wx.EXPAND)
-        panelBox2.AddSpacer(20)
-        panelBox2.Add(self.frelab, flag=wx.EXPAND)
-        panelBox2.Add(self.freslide, flag=wx.EXPAND)
-        panelBox2.AddSpacer(20)
-        panelBox2.Add(self.cholab, flag=wx.EXPAND)
-        panelBox2.Add(self.choslide, flag=wx.EXPAND)
-        panelBox2.AddSpacer(20)
-        panelBox2.Add(self.revlab, flag=wx.EXPAND)
-        panelBox2.Add(self.revslide, flag=wx.EXPAND)
-        panelBox2.AddSpacer(20)
-        panelBox = wx.BoxSizer(wx.VERTICAL)
-        panelBox.Add(panelBox1)
-        panelBox.Add(panelBox2)
-        panel.SetSizer(panelBox)
+        panelGrid = wx.FlexGridSizer(rows=4, cols=6, hgap=5, vgap=5)
+        # WX Widget Button Row
+        panelGrid.Add(self.dk1Button, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(self.dk2Button, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(self.dk3Button, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(self.dk4Button, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(self.dk5Button, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(self.dk6Button, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        # WX Widget ToggleButton Row
+        panelGrid.Add(self.voltb, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)       
+        panelGrid.Add(self.spetb, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(self.distb, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(self.fretb, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(self.chotb, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(self.revtb, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        # WX Widget Slider Row		
+        panelGrid.Add(volcol, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(specol, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(discol, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(frecol, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(chocol, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(revcol, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        # Clock
+        panelGrid.AddSpacer(10)
+        panelGrid.AddSpacer(10)
+        panelGrid.AddSpacer(10)
+        panelGrid.AddSpacer(10)
+        panelGrid.AddSpacer(10)
+        panelGrid.Add(timebox, 0, wx.ALIGN_CENTER|wx.EXPAND)
+        for i in range(6):
+            panelGrid.AddGrowableCol(i)
+        panelGrid.AddGrowableRow(2)		
 
+        panel.SetSizer(panelGrid)
+        panelGrid.Fit(self)
+    
+    def tbuttonUpdate(self, event):
+        tbutton = event.GetEventObject()
+        self.modulator.effectchain[tbutton.GetName()] = tbutton.GetValue()
+        #print(tbutton.GetName() + " " + str(tbutton.GetValue()))
+		
     def sliderUpdate(self, event):
         slider = event.GetEventObject()
         self.modulator.effectchain[slider.GetName()] = slider.GetValue() / 100.0
+        #print(slider.GetName() + " " + str(slider.GetValue()/100.0))
 
     def buttonDKChange(self, event):
         button = event.GetEventObject()        
         self.chooser.set_kit(button.GetLabel())
+        #print(button.GetName() + " " + button.GetLabel())
 
+    def on_timer(self, event):
+        self.ctime.SetValue(time.strftime('%M:%S'))
+        self.ctime.Refresh()
+        self.timer.Start(1000)
+		
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
