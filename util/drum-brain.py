@@ -178,6 +178,7 @@ class Modulator:
                                    bal=0.7)
         else:
             self.output = chorus
+        self.output = self.output.mix(2)
         self.output.out()
 
     def toggle_effect(self, name, state):
