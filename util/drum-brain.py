@@ -151,17 +151,20 @@ def midinote2sample(pad, velocity, low, high):
 class Modulator:
     def __init__(self):
         # Effect Chain:
-        # Input -> 'Distortion' -> 'Frequency Shifter'
-        # -> 'Chorus' -> 'Reverb' -> 'Volume' -> Speaker
+        # Input -> 'Compressor' - >'Distortion'
+        # -> 'Frequency Shifter' -> 'Chorus' -> 'Reverb'
+        # -> 'Volume' -> Speaker
 
         # Effect parameters:
         # 'Volume-param': between 0 and 1
+        # 'Compressor-param': between 0 and 10
         # 'Distortion-param': between 0 and 1
         # 'FreqShift-param': amount of shifting in Hertz
         # 'Chorus-param': between 0 and 5
         # 'Reverb-param': between 0 and 1
 
         self.effectchain = {'Volume': False, 'Volume-param': 1.0,
+                            'Compressor': False, 'Compressor-param': 0.1,
                             'Distortion': False, 'Distortion-param': 0,
                             'FreqShift': False, 'FreqShift-param': 0,
                             'Chorus': False, 'Chorus-param': 0,
@@ -169,12 +172,19 @@ class Modulator:
 
     def execute(self, player):
         denorm_noise = Noise(1e-24)
+        if self.effectchain['Compressor']:
+            compressor = Compress(player,
+                                  ratio=self.effectchain['Compressor-param'],
+                                  thresh=-36,
+                                  falltime=0.18)
+        else:
+            compressor = player
         if self.effectchain['Distortion']:
-            distortion = Disto(player,
+            distortion = Disto(compressor,
                                drive=self.effectchain['Distortion-param'],
                                slope=0.7)
         else:
-            distortion = player
+            distortion = compressor
         if self.effectchain['FreqShift']:
             freqshift = FreqShift(distortion + denorm_noise,
                                   self.effectchain['FreqShift-param'])
@@ -255,9 +265,9 @@ class HansDrumFrame(wx.Frame):
         	 label='Volume',
         	 name='Volume',
         	 size=(50,100))
-        self.spetb = wx.ToggleButton(panel, -1,
-        	 label='Speed',
-        	 name='Speed',
+        self.comtb = wx.ToggleButton(panel, -1,
+        	 label='Compres\nsor',
+        	 name='Compressor',
         	 size=(50,100))
         self.distb = wx.ToggleButton(panel, -1,
         	 label='Distor\ntion',
@@ -276,7 +286,7 @@ class HansDrumFrame(wx.Frame):
         	 name='Reverb',
         	 size=(50,100))
         self.voltb.SetFont(font2)
-        self.spetb.SetFont(font2)
+        self.comtb.SetFont(font2)
         self.distb.SetFont(font2)
         self.fretb.SetFont(font2)
         self.chotb.SetFont(font2)
@@ -288,9 +298,9 @@ class HansDrumFrame(wx.Frame):
                                   size=(80, -1),
                                   name=('Volume-param'),
                                   style=wx.SL_INVERSE| wx.SL_VERTICAL| wx.SL_VALUE_LABEL)
-        self.speslide = wx.Slider(panel, -1, 100.0, -200.0, 200.0,
+        self.comslide = wx.Slider(panel, -1, 10.0, 0.0, 1000.0,
                                   size=(80, -1),
-                                  name=('Speed-param'),
+                                  name=('Compressor-param'),
                                   style=wx.SL_INVERSE| wx.SL_VERTICAL | wx.SL_VALUE_LABEL)
         self.disslide = wx.Slider(panel, -1, 0.0, 0.0, 100.0,
                                   size=(80, -1),
@@ -309,7 +319,7 @@ class HansDrumFrame(wx.Frame):
                                   name=('Reverb-param'),
                                   style=wx.SL_INVERSE| wx.SL_VERTICAL | wx.SL_VALUE_LABEL)
         self.volslide.SetFont(font2)
-        self.speslide.SetFont(font2)
+        self.comslide.SetFont(font2)
         self.disslide.SetFont(font2)
         self.freslide.SetFont(font2)
         self.choslide.SetFont(font2)
@@ -320,11 +330,11 @@ class HansDrumFrame(wx.Frame):
         volcol.Add(self.volslide, flag=wx.EXPAND|wx.CENTER)
         volcol.SetMinSize(wx.Size(80, -1))
         volcol.AddStretchSpacer(20)
-        specol = wx.BoxSizer(wx.HORIZONTAL)
-        specol.AddStretchSpacer(20)
-        specol.Add(self.speslide, flag=wx.EXPAND|wx.CENTER)
-        specol.SetMinSize(wx.Size(80, -1))
-        specol.AddStretchSpacer(20)
+        comcol = wx.BoxSizer(wx.HORIZONTAL)
+        comcol.AddStretchSpacer(20)
+        comcol.Add(self.comslide, flag=wx.EXPAND|wx.CENTER)
+        comcol.SetMinSize(wx.Size(80, -1))
+        comcol.AddStretchSpacer(20)
         discol = wx.BoxSizer(wx.HORIZONTAL)
         discol.AddStretchSpacer(20)
         discol.Add(self.disslide, flag=wx.EXPAND|wx.CENTER)
@@ -370,14 +380,14 @@ class HansDrumFrame(wx.Frame):
         panelGrid.Add(self.dk6Button, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
         # WX Widget ToggleButton Row
         panelGrid.Add(self.voltb, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
-        panelGrid.Add(self.spetb, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(self.comtb, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
         panelGrid.Add(self.distb, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
         panelGrid.Add(self.fretb, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
         panelGrid.Add(self.chotb, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
         panelGrid.Add(self.revtb, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
         # WX Widget Slider Row
         panelGrid.Add(volcol, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
-        panelGrid.Add(specol, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
+        panelGrid.Add(comcol, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
         panelGrid.Add(discol, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
         panelGrid.Add(frecol, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
         panelGrid.Add(chocol, 0, flag=wx.ALIGN_CENTER|wx.EXPAND)
