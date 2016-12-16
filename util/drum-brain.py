@@ -31,9 +31,12 @@ class Sample:
         self.category = category or os.path.basename(os.path.dirname(path))
         self.audio = SndTable(path, chnl=1)
         self.audio_rate = self.audio.getRate()
+        self.player = TableRead(table=self.audio,
+                                freq=self.audio_rate,
+                                loop=False).stop()
 
 
-class Chooser:
+class SamplePlayer:
     def __init__(self, modulator, sample_root='.'):
         self.modulator = modulator
         self.sample_root = sample_root
@@ -48,16 +51,25 @@ class Chooser:
                           'hhCL': None, 'hhCM': None, 'hhCH': None,
                           'footL': None, 'footM': None, 'footH': None }
         self.selected_kit = ''
-        self.output = None
+        self.mixer = None
         self.set_kit('DK1')
+        self.init_mixer()
+
+    def init_mixer(self):
+        self.mixer = Mixer(outs=1, chnls=30)
+        for sample in self.samples:
+            if self.samples[sample]:
+                self.mixer.addInput(sample, self.samples[sample].player)
+                self.mixer.setAmp(sample, 0, 0.1)
 
     def execute(self, pad):
-        self.modulator.execute(self.samples[pad])
-        self.output = self.samples[pad]
+        self.samples[pad].player.play()
+        self.modulator.execute(self.mixer[0])
 
     def set_kit(self, category):
         self.selected_kit = category
         self.load_samples(os.path.join(self.sample_root, category))
+        self.init_mixer()
 
     def load_samples(self, folder):
         for root, dirnames, filenames in os.walk(folder):
@@ -110,49 +122,40 @@ def handle_midievent(status, note, velocity):
             midinote2sample('foot', velocity, low, high)
     #filter program change
     elif 192 <= status <= 207:
-        chooser.set_kit('DK%s' % note)
+        sampleplayer.set_kit('DK%s' % note)
     #filter control change
     #elif 176 <= status <= 191 and note == 4:
 
 def midinote2sample(pad, velocity, low, high):
     if velocity <= low:
-        chooser.execute('%sL' % pad)
+        sampleplayer.execute('%sL' % pad)
     elif velocity >= high:
-        chooser.execute('%sH' % pad)
+        sampleplayer.execute('%sH' % pad)
     else:
-        chooser.execute('%sM' % pad)
+        sampleplayer.execute('%sM' % pad)
 
 
 class Modulator:
     def __init__(self):
         # Effect Chain:
-        # 'Volume' -> 'Speed' -> 'Distortion'
-        # -> 'Frequency Shifter' -> 'Chorus' -> 'Reverb'
+        # Input -> 'Distortion' -> 'Frequency Shifter'
+        # -> 'Chorus' -> 'Reverb' -> 'Volume' -> Speaker
 
         # Effect parameters:
         # 'Volume-param': between 0 and 1
-        # 'Speed-param': 1 - original; 0-1 slow; 1< - fast
         # 'Distortion-param': between 0 and 1
         # 'FreqShift-param': amount of shifting in Hertz
         # 'Chorus-param': between 0 and 5
         # 'Reverb-param': between 0 and 1
 
-        self.effectchain = {'Volume': False, 'Volume-param': 0,
-                            'Speed': False, 'Speed-param': 0,
+        self.effectchain = {'Volume': False, 'Volume-param': 1.0,
                             'Distortion': False, 'Distortion-param': 0,
                             'FreqShift': False, 'FreqShift-param': 0,
                             'Chorus': False, 'Chorus-param': 0,
                             'Reverb': False, 'Reverb-param': 0}
 
-    def execute(self, sample):
-        player = TableRead(table=sample.audio,
-                           freq=sample.audio_rate,
-                           loop=False).play()
+    def execute(self, player):
         denorm_noise = Noise(1e-24)
-        if self.effectchain['Volume']:
-            player.setMul(self.effectchain['Volume-param'])
-        if self.effectchain['Speed']:
-            player.setFreq(self.effectchain['Speed-param'])
         if self.effectchain['Distortion']:
             distortion = Disto(player,
                                drive=self.effectchain['Distortion-param'],
@@ -178,6 +181,10 @@ class Modulator:
                                    bal=0.7)
         else:
             self.output = chorus
+        if self.effectchain['Volume']:
+            self.output.setMul(self.effectchain['Volume-param'])
+        else:
+            self.output.setMul(1)
         self.output = self.output.mix(2)
         self.output.out()
 
@@ -191,11 +198,11 @@ class Modulator:
 
 
 class HansDrumFrame(wx.Frame):
-    def __init__(self, chooser, modulator, parent=None):
+    def __init__(self, sampleplayer, modulator, parent=None):
         wx.Frame.__init__(self,
                           parent,
                           title='HANS DRUM')
-        self.chooser = chooser
+        self.sampleplayer = sampleplayer
         self.modulator = modulator
         self.SetMinSize(wx.Size(650, 500))
         #self.SetDimensions(100, 100, 650, 500)
@@ -388,7 +395,7 @@ class HansDrumFrame(wx.Frame):
 
     def buttonDKChange(self, event):
         button = event.GetEventObject()
-        self.chooser.set_kit(button.GetLabel())
+        self.sampleplayer.set_kit(button.GetLabel())
         #print(button.GetName() + " " + button.GetLabel())
 
     def on_timer(self, event):
@@ -408,6 +415,10 @@ if __name__ == "__main__":
                         help='Path of samples root folder',
                         default='.')
     args = parser.parse_args()
+
+    if not os.path.isdir(args.sampleroot):
+        print("Invalid sample root!")
+        sys.exit(64)
 
     if int(''.join(map(str, getVersion()))) < 76:
         # RawMidi is supported only since Python-Pyo version 0.7.6
@@ -431,9 +442,9 @@ if __name__ == "__main__":
     server.start()
 
     modulator = Modulator()
-    chooser = Chooser(modulator, sample_root=args.sampleroot)
+    sampleplayer = SamplePlayer(modulator, sample_root=args.sampleroot)
     midiproc = MidiProc()
 
     app = wx.App()
-    HansDrumFrame(chooser, modulator)
+    HansDrumFrame(sampleplayer, modulator)
     app.MainLoop()
