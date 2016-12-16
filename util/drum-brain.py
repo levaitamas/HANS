@@ -40,34 +40,36 @@ class SamplePlayer:
     def __init__(self, modulator, sample_root='.'):
         self.modulator = modulator
         self.sample_root = sample_root
-        self.samples =  { 'kickL': None, 'kickM': None, 'kickH': None,
-                          'snareL': None, 'snareM': None, 'snareH': None,
-                          'tom1L': None, 'tom1M': None, 'tom1H': None,
-                          'tom2L': None, 'tom2M': None, 'tom2H': None,
-                          'tom3L': None, 'tom3M': None, 'tom3H': None,
-                          'crashL': None, 'crashM': None, 'crashH': None,
-                          'rideL': None, 'rideM': None, 'rideH': None,
-                          'hhOL': None, 'hhOM': None, 'hhOH': None,
-                          'hhCL': None, 'hhCM': None, 'hhCH': None,
-                          'footL': None, 'footM': None, 'footH': None }
+        self.samples = {}
+        self.reset_samples()
         self.selected_kit = ''
         self.mixer = None
         self.set_kit('DK1')
         self.init_mixer()
 
     def init_mixer(self):
-        self.mixer = Mixer(outs=1, chnls=30)
-        for sample in self.samples:
-            if self.samples[sample]:
-                self.mixer.addInput(sample, self.samples[sample].player)
+        self.mixer = None
+        categories = ['kick', 'snare', 'tom1', 'tom2', 'tom3',
+                      'crash', 'ride', 'hhO', 'hhC', 'foot']
+        self.mixer = Mixer(outs=1, chnls=len(categories))
+        for sample in categories:
+            sampleH = "%sH" % sample
+            if self.samples[sampleH]:
+                self.mixer.addInput(sample,
+                                    self.samples[sampleH].player)
                 self.mixer.setAmp(sample, 0, 0.1)
 
     def execute(self, pad):
+        self.mixer.delInput(pad[:-1])
+        self.mixer.addInput(pad[:-1],
+                            self.samples[pad].player)
+        self.mixer.setAmp(pad[:-1], 0, 0.1)
         self.samples[pad].player.play()
         self.modulator.execute(self.mixer[0])
 
     def set_kit(self, category):
         self.selected_kit = category
+        self.reset_samples()
         self.load_samples(os.path.join(self.sample_root, category))
         self.init_mixer()
 
@@ -78,6 +80,17 @@ class SamplePlayer:
                 self.samples[
                     os.path.basename(filename).split('.')[0]] = Sample(path)
 
+    def reset_samples(self):
+        self.samples =  { 'kickL': None, 'kickM': None, 'kickH': None,
+                          'snareL': None, 'snareM': None, 'snareH': None,
+                          'tom1L': None, 'tom1M': None, 'tom1H': None,
+                          'tom2L': None, 'tom2M': None, 'tom2H': None,
+                          'tom3L': None, 'tom3M': None, 'tom3H': None,
+                          'crashL': None, 'crashM': None, 'crashH': None,
+                          'rideL': None, 'rideM': None, 'rideH': None,
+                          'hhOL': None, 'hhOM': None, 'hhOH': None,
+                          'hhCL': None, 'hhCM': None, 'hhCH': None,
+                          'footL': None, 'footM': None, 'footH': None }
 
 class MidiProc:
     def __init__(self):
