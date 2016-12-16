@@ -57,13 +57,14 @@ class SamplePlayer:
             if self.samples[sampleH]:
                 self.mixer.addInput(sample,
                                     self.samples[sampleH].player)
-                self.mixer.setAmp(sample, 0, 0.1)
+                self.mixer.setAmp(sample, 0, 0.3)
 
-    def execute(self, pad):
+    def execute(self, pad):        
+        print("%s %s" % (pad, self.samples[pad].path))
         self.mixer.delInput(pad[:-1])
         self.mixer.addInput(pad[:-1],
                             self.samples[pad].player)
-        self.mixer.setAmp(pad[:-1], 0, 0.1)
+        self.mixer.setAmp(pad[:-1], 0, 0.3)
         self.samples[pad].player.play()
         self.modulator.execute(self.mixer[0])
 
@@ -78,7 +79,7 @@ class SamplePlayer:
             for filename in fnmatch.filter(filenames, '*.aiff'):
                 path = os.path.join(root, filename)
                 self.samples[
-                    os.path.basename(filename).split('.')[0].split('-')[1]] = Sample(path)
+                    os.path.basename(filename).split('-')[0]] = Sample(path)
 
     def reset_samples(self):
         self.samples =  { 'kickL': None, 'kickM': None, 'kickH': None,
@@ -99,8 +100,8 @@ class MidiProc:
 # https://static.roland.com/assets/media/pdf/HD-1_r_e2.pdf
 
 def handle_midievent(status, note, velocity):
-    low = 52
-    high = 100
+    low = 62
+    high = 94
     # filter note-on messages
     if 144 <= status <= 159:
         # filter kick drum
@@ -240,17 +241,17 @@ class HansDrumFrame(wx.Frame):
         font3 = wx.Font(14, wx.TELETYPE, wx.NORMAL, wx.BOLD)
 
         # WX Widget Buttons
-        self.dk1Button = wx.Button(panel, label='DK1',
+        self.dk1Button = wx.Button(panel, label='DK10',
                                     size=wx.Size(50, 100))
-        self.dk2Button = wx.Button(panel, label='DK2',
+        self.dk2Button = wx.Button(panel, label='DK11',
                                     size=wx.Size(50, 100))
-        self.dk3Button = wx.Button(panel, label='DK3',
+        self.dk3Button = wx.Button(panel, label='DK12',
                                     size=wx.Size(50, 100))
-        self.dk4Button = wx.Button(panel, label='DK4',
+        self.dk4Button = wx.Button(panel, label='DK13',
                                     size=wx.Size(50, 100))
-        self.dk5Button = wx.Button(panel, label='DK5',
+        self.dk5Button = wx.Button(panel, label='DK14',
                                     size=wx.Size(50, 100))
-        self.dk6Button = wx.Button(panel, label='DK6',
+        self.dk6Button = wx.Button(panel, label='DK15',
                                     size=wx.Size(50, 100))
         self.dk1Button.SetFont(font1)
         self.dk2Button.SetFont(font1)
