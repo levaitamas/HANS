@@ -44,13 +44,13 @@ class SamplePlayer:
         self.reset_samples()
         self.selected_kit = ''
         self.mixer = None
-        self.set_kit('DK1')
+        self.set_kit('DK0')
         self.init_mixer()
 
     def init_mixer(self):
         self.mixer = None
         categories = ['kick', 'snare', 'tom1', 'tom2', 'tom3',
-                      'crash', 'ride', 'hhO', 'hhC', 'foot']
+                      'crash', 'ride', 'hho', 'hhc', 'foot']
         self.mixer = Mixer(outs=1, chnls=len(categories))
         for sample in categories:
             sampleH = "%sH" % sample
@@ -78,7 +78,7 @@ class SamplePlayer:
             for filename in fnmatch.filter(filenames, '*.aiff'):
                 path = os.path.join(root, filename)
                 self.samples[
-                    os.path.basename(filename).split('.')[0]] = Sample(path)
+                    os.path.basename(filename).split('.')[0].split('-')[1]] = Sample(path)
 
     def reset_samples(self):
         self.samples =  { 'kickL': None, 'kickM': None, 'kickH': None,
@@ -88,8 +88,8 @@ class SamplePlayer:
                           'tom3L': None, 'tom3M': None, 'tom3H': None,
                           'crashL': None, 'crashM': None, 'crashH': None,
                           'rideL': None, 'rideM': None, 'rideH': None,
-                          'hhOL': None, 'hhOM': None, 'hhOH': None,
-                          'hhCL': None, 'hhCM': None, 'hhCH': None,
+                          'hhoL': None, 'hhoM': None, 'hhoH': None,
+                          'hhcL': None, 'hhcM': None, 'hhcH': None,
                           'footL': None, 'footM': None, 'footH': None }
 
 class MidiProc:
@@ -126,10 +126,10 @@ def handle_midievent(status, note, velocity):
             midinote2sample('ride', velocity, low, high)
         # filter hh open
         elif note == 46:
-            midinote2sample('hhO', velocity, low, high)
+            midinote2sample('hho', velocity, low, high)
         # filter hh close
         elif note == 42:
-            midinote2sample('hhC', velocity, low, high)
+            midinote2sample('hhc', velocity, low, high)
         # filter foot closed
         elif note == 44:
             midinote2sample('foot', velocity, low, high)
