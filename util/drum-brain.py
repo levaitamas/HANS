@@ -57,14 +57,13 @@ class SamplePlayer:
             if self.samples[sampleH]:
                 self.mixer.addInput(sample,
                                     self.samples[sampleH].player)
-                self.mixer.setAmp(sample, 0, 0.3)
+                self.mixer.setAmp(sample, 0, 0.1)
 
     def execute(self, pad):        
-        print("%s %s" % (pad, self.samples[pad].path))
         self.mixer.delInput(pad[:-1])
         self.mixer.addInput(pad[:-1],
                             self.samples[pad].player)
-        self.mixer.setAmp(pad[:-1], 0, 0.3)
+        self.mixer.setAmp(pad[:-1], 0, 0.1)
         self.samples[pad].player.play()
         self.modulator.execute(self.mixer[0])
 
