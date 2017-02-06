@@ -12,25 +12,25 @@ try:
 except ImportError:
     raise SystemError("wxPython not found. Please, install it.")
 try:
-    from pyo import *
+    import pyo
 except ImportError:
     raise SystemError("Python-Pyo not found. Please, install it.")
 import sys
 
 class AudioGen():
     def __init__(self):
-        self.n = Noise(1e-24)
-        self.osc = FastSine(mul=0)
-        self.delay = SmoothDelay(self.osc+self.n, delay=0, maxdelay=2)
-        self.reverb = STRev(self.delay+self.n, bal=0)
+        self.n = pyo.Noise(1e-24)
+        self.osc = pyo.FastSine(mul=0)
+        self.delay = pyo.SmoothDelay(self.osc+self.n, delay=0, maxdelay=2)
+        self.reverb = pyo.STRev(self.delay+self.n, bal=0)
         self.reverb.out()
 
     def resetChain(self, delay_time, reverb_bal):
-        self.delay = SmoothDelay(self.osc+self.n,
-                                 delay=delay_time,
-                                 maxdelay=2)
-        self.reverb = STRev(self.delay+self.n,
-                               bal=reverb_bal)
+        self.delay = pyo.SmoothDelay(self.osc+self.n,
+                                     delay=delay_time,
+                                     maxdelay=2)
+        self.reverb = pyo.STRev(self.delay+self.n,
+                                bal=reverb_bal)
         self.reverb.out()
 
     def setFreq(self, freq):
@@ -133,23 +133,23 @@ class ThereminUI(wx.Frame):
         delayTime = self.delaySlide.GetValue() / 200.0
         reverbBal = self.reverbSlide.GetValue() / 100.0
         if obj.GetLabel() == "FastSine":
-            self.audiogen.osc = FastSine(mul=0)
+            self.audiogen.osc = pyo.FastSine(mul=0)
         elif obj.GetLabel() == "SuperSaw":
-            self.audiogen.osc = SuperSaw(mul=0)
+            self.audiogen.osc = pyo.SuperSaw(mul=0)
         elif obj.GetLabel() == "Blit":
-            self.audiogen.osc = Blit(mul=0)
+            self.audiogen.osc = pyo.Blit(mul=0)
         elif obj.GetLabel() == "SuperSaw":
-            self.audiogen.osc = Phasor(mul=0)
+            self.audiogen.osc = pyo.Phasor(mul=0)
         elif obj.GetLabel() == "RCOsc":
-            self.audiogen.osc = RCOsc(mul=0)
+            self.audiogen.osc = pyo.RCOsc(mul=0)
         self.audiogen.resetChain(delayTime, reverbBal)
 
 
 if __name__ == "__main__":
     if sys.platform.startswith("win"):
-        server = Server()
+        server = pyo.Server()
     else:
-        server = Server(audio='jack', jackname='HANS THEREMIN', duplex=0)
+        server = pyo.Server(audio='jack', jackname='HANS THEREMIN', duplex=0)
     server.boot()
     server.start()
     app = wx.App()

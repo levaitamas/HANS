@@ -7,7 +7,7 @@ Copyright (C) 2015-     Tamás Lévai    <levait@tmit.bme.hu>
 Copyright (C) 2015-     Richárd Beregi <richard.beregi@sztaki.mta.hu>
 """
 try:
-    from pyo import *
+    import pyo
 except ImportError:
     raise SystemError("Python-Pyo not found. Please, install it.")
 import SocketServer
@@ -34,7 +34,7 @@ class Sample:
         assert path
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
-        self.audio = SndTable(path, chnl=1)
+        self.audio = pyo.SndTable(path, chnl=1)
         self.audio_rate = self.audio.getRate()
 
     def __str__(self):
@@ -56,10 +56,10 @@ class SigProc:
                    % (self.active, self.inactive, self.weight)
 
     def __init__(self, audioin):
-        self.yin = Yin(audioin)
-        self.cen = Centroid(audioin)
-        self.rms = Follower(audioin)
-        self.amp = PeakAmp(audioin)
+        self.yin = pyo.Yin(audioin)
+        self.cen = pyo.Centroid(audioin)
+        self.rms = pyo.Follower(audioin)
+        self.amp = pyo.PeakAmp(audioin)
         self.yinlim = 400
         self.cenlim = 6000
         self.rmslim = 0.6
@@ -308,7 +308,7 @@ class Chooser:
 
 class MidiProc:
     def __init__(self):
-        self.rawm = RawMidi(handle_midievent)
+        self.rawm = pyo.RawMidi(handle_midievent)
 
 
 def handle_midievent(status, note, velocity):
@@ -375,42 +375,42 @@ class Modulator:
         sample = self.chooser.output
         if sample is None:
             return
-        player = TableRead(table=sample.audio,
+        player = pyo.TableRead(table=sample.audio,
                            freq=sample.audio_rate,
                            loop=False).play()
-        denorm_noise = Noise(1e-24)
+        denorm_noise = pyo.Noise(1e-24)
         if self.effectchain['Volume']:
             player.setMul(self.effectchain['Volume-param'] or
                           random.random())
         if self.effectchain['Speed']:
             player.setFreq(self.effectchain['Speed-param'] or
-                            (0.5 + random.random()/2))
+                           (0.5 + random.random()/2))
         if self.effectchain['Distortion']:
-            distortion = Disto(player,
-                               drive=self.effectchain['Distortion-param'] or
-                               random.uniform(0.4, 1),
-                               slope=0.7)
+            distortion = pyo.Disto(player,
+                                   drive=self.effectchain['Distortion-param'] or
+                                   random.uniform(0.4, 1),
+                                   slope=0.7)
         else:
             distortion = player
         if self.effectchain['FreqShift']:
-            freqshift = FreqShift(distortion + denorm_noise,
-                                  self.effectchain['FreqShift-param'] or
-                                  random.random() * 220)
+            freqshift = pyo.FreqShift(distortion + denorm_noise,
+                                      self.effectchain['FreqShift-param'] or
+                                      random.random() * 220)
         else:
             freqshift = distortion + denorm_noise
         if self.effectchain['Chorus']:
-            chorus = Chorus(freqshift,
-                            depth=self.effectchain['Chorus-param'] or
-                            random.uniform(1, 5),
-                            feedback=random.random(),
-                            bal=0.6)
+            chorus = pyo.Chorus(freqshift,
+                                depth=self.effectchain['Chorus-param'] or
+                                random.uniform(1, 5),
+                                feedback=random.random(),
+                                bal=0.6)
         else:
             chorus = freqshift
         if self.effectchain['Reverb']:
-            self.output = Freeverb(chorus,
-                                   size=self.effectchain['Reverb-param'] or
-                                   random.random(),
-                                   damp=random.random(), bal=0.7)
+            self.output = pyo.Freeverb(chorus,
+                                       size=self.effectchain['Reverb-param'] or
+                                       random.random(),
+                                       damp=random.random(), bal=0.7)
         else:
             self.output = chorus
         if random.random() < 0.5:
@@ -471,15 +471,15 @@ if __name__ == "__main__":
                         action='store_true')
     args = parser.parse_args()
 
-    if int(''.join(map(str, getVersion()))) < 76:
+    if int(''.join(map(str, pyo.getVersion()))) < 76:
         # RawMidi is supported only since Python-Pyo version 0.7.6
         raise SystemError("Please, update your Python-Pyo install" +
                           "to version 0.7.6 or later.")
 
     if sys.platform.startswith("win"):
-        server = Server(duplex=1)
+        server = pyo.Server(duplex=1)
     else:
-        server = Server(duplex=1, audio='jack', jackname='HANS')
+        server = pyo.Server(duplex=1, audio='jack', jackname='HANS')
 
     if args.verbose:
         # server.setVerbosity(8)
@@ -491,15 +491,15 @@ if __name__ == "__main__":
     if args.midi:
         server.setMidiInputDevice(args.midi)
     else:
-        pm_list_devices()
+        pyo.pm_list_devices()
         inid = -1
-        while (inid > pm_count_devices()-1 and inid != 99) or inid < 0:
+        while (inid > pyo.pm_count_devices()-1 and inid != 99) or inid < 0:
             inid = input("Please select input ID [99 for all]: ")
             server.setMidiInputDevice(inid)
     server.boot()
     server.start()
 
-    sigproc = SigProc(Input())
+    sigproc = SigProc(pyo.Input())
     seedgen = SeedGen()
     chooser = Chooser(seedgen, sigproc, sample_root=args.sampleroot)
     modulator = Modulator(chooser, sigproc)

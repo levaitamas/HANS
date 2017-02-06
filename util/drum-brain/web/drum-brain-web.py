@@ -6,7 +6,7 @@ HANS DRUM UTIL - WEB
 Copyright (C) 2016-     Richárd Beregi <richard.beregi@sztaki.mta.hu>
 Copyright (C) 2016-     Tamás Lévai    <levait@tmit.bme.hu>
 """
-from flask import Flask, render_template, redirect, url_for, request
+from flask import Flask
 import argparse
 import random
 import socket
