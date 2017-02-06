@@ -407,16 +407,17 @@ class Modulator:
         else:
             chorus = freqshift
         if self.effectchain['Reverb']:
-            self.output = pyo.Freeverb(chorus,
+            pan = pyo.Freeverb(chorus,
                                        size=self.effectchain['Reverb-param'] or
                                        random.random(),
                                        damp=random.random(), bal=0.7)
         else:
-            self.output = chorus
-        if random.random() < 0.5:
-            self.output.out()
-        else:
-            self.output.out(1)
+            pan = chorus
+
+        self.output = pyo.Pan(pan,
+                              pan=random.choice([0.01, 0.25, 0.5, 0.75, 0.99]),
+                              spread=0.1)
+        self.output.out()
 
     def toggle_effect(self, name, state):
         for key in self.effectchain.keys():
