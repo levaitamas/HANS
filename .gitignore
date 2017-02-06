@@ -11,6 +11,9 @@ __pycache__/
 *.aiff
 *[Ss]ample*/
 
+#Artifacts
+*artifact*/
+
 #LaTeX
 *.aux
 *.glo
