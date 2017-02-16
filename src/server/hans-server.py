@@ -26,7 +26,7 @@ class SeedGen:
         self.output = self.execute()
 
     def execute(self):
-        self.output = random.randrange(1, 102334156)
+        self.output = int(random.random() * 13579)
 
 
 class Sample:
