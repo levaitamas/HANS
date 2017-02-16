@@ -83,8 +83,6 @@ class SigProc:
             'Speed-param': self.denorm(self.outputlist["spe"], 0.6, 1.4),
             'Distortion': self.toggle(self.outputlist["dis"], 0.4),
             'Distortion-param': self.denorm(self.outputlist["dis"], 0.4, 1.0),
-            'FreqShift': self.toggle(self.outputlist["fre"], 0.6),
-            'FreqShift-param': self.denorm(self.outputlist["fre"], -2000.0, 8000.0),
             'Chorus': self.toggle(self.outputlist["cho"], 0.4),
             'Chorus-param': self.denorm(self.outputlist["cho"], 1.0, 4.0),
             'Reverb': self.toggle(self.outputlist["rev"], 0.4),
@@ -122,26 +120,22 @@ class SigProc:
             self.rulelist.append(self.Rule("vol%s" % id, "vol", 1.0/i))
             self.rulelist.append(self.Rule("spe%s" % id, "spe", 1.0/i))
             self.rulelist.append(self.Rule("dis%s" % id, "dis", 1.0/i))
-            self.rulelist.append(self.Rule("fre%s" % id, "fre", 1.0/i))
             self.rulelist.append(self.Rule("cho%s" % id, "cho", 1.0/i))
             self.rulelist.append(self.Rule("rev%s" % id, "rev", 1.0/i))
 
         self.rulelist.append(self.Rule("yin", "spe", 2.00))
         self.rulelist.append(self.Rule("yin", "dis", 0.70))
-        self.rulelist.append(self.Rule("yin", "fre", 0.60))
         self.rulelist.append(self.Rule("yin", "cho", 0.95))
         self.rulelist.append(self.Rule("yin", "rev", 0.95))
 
         self.rulelist.append(self.Rule("cen", "vol", 0.90))
         self.rulelist.append(self.Rule("cen", "spe", 0.90))
         self.rulelist.append(self.Rule("cen", "dis", 0.90))
-        self.rulelist.append(self.Rule("cen", "fre", 0.50))
         self.rulelist.append(self.Rule("cen", "cho", 0.90))
         self.rulelist.append(self.Rule("cen", "rev", 0.95))
 
         self.rulelist.append(self.Rule("rms", "vol", 1.00))
         self.rulelist.append(self.Rule("rms", "dis", 0.8))
-        self.rulelist.append(self.Rule("rms", "fre", 0.65))
         self.rulelist.append(self.Rule("rms", "cho", 0.8))
         self.rulelist.append(self.Rule("rms", "rev", 0.6))
 
@@ -163,7 +157,6 @@ class SigProc:
 
         self.rulelist.append(self.Rule("amp", "Nature", 0.7))
         self.rulelist.append(self.Rule("cen", "Nature", 0.85))
-
         self.rulelist.append(self.Rule("amp", "Beep", 0.7))
         self.rulelist.append(self.Rule("yin", "Beep", 1.0))
 
@@ -177,7 +170,6 @@ class SigProc:
             self.outputlist["vol%s" % id] = 0
             self.outputlist["spe%s" % id] = 0
             self.outputlist["dis%s" % id] = 0
-            self.outputlist["fre%s" % id] = 0
             self.outputlist["cho%s" % id] = 0
             self.outputlist["rev%s" % id] = 0
         self.outputlist["Other"] = 0
@@ -348,24 +340,38 @@ class Modulator:
         self.sigproc = sigproc
         self.output = None
         self.enable_ai = enable_ai
+
         # Effect Chain:
         # 'Volume' -> 'Speed' -> 'Distortion'
-        # -> 'Frequency Shifter' -> 'Chorus' -> 'Reverb'
+        # -> 'Chorus' -> 'Reverb' -> 'Pan'
 
         # Effect parameters:
         # 'Volume-param': between 0 and 1
         # 'Speed-param': 1 - original; 0-1 slow; 1< - fast
         # 'Distortion-param': between 0 and 1
-        # 'FreqShift-param': amount of shifting in Hertz
         # 'Chorus-param': between 0 and 5
         # 'Reverb-param': between 0 and 1
 
         self.effectchain = {'Volume': False, 'Volume-param': 0,
                             'Speed': False, 'Speed-param': 0,
                             'Distortion': False, 'Distortion-param': 0,
-                            'FreqShift': False, 'FreqShift-param': 0,
                             'Chorus': False, 'Chorus-param': 0,
                             'Reverb': False, 'Reverb-param': 0}
+
+        self.player = pyo.TableRead(pyo.NewTable(1), loop=False)
+        self.denorm_noise = pyo.Noise(1e-24)
+        self.distortion = pyo.Disto(self.player, drive=0.7, slope=0.7)
+        self.selector_disto = pyo.Selector(
+            inputs=[self.player, self.distortion])
+        self.chorus = pyo.Chorus(self.selector_disto + self.denorm_noise,
+                                 bal=0.6)
+        self.selector_chorus = pyo.Selector(
+            inputs=[self.selector_disto, self.chorus])
+        self.reverb = pyo.Freeverb(self.selector_chorus + self.denorm_noise,
+                                   bal=0.7)
+        self.selector_reverb = pyo.Selector(
+            inputs=[self.selector_chorus, self.reverb])
+        self.output = pyo.Pan(self.selector_reverb, outs=2, spread=0.1)
 
     def execute(self):
         if self.enable_ai:
@@ -375,48 +381,37 @@ class Modulator:
         sample = self.chooser.output
         if sample is None:
             return
-        player = pyo.TableRead(table=sample.audio,
-                           freq=sample.audio_rate,
-                           loop=False).play()
-        denorm_noise = pyo.Noise(1e-24)
+        self.player.setTable(sample.audio)
         if self.effectchain['Volume']:
-            player.setMul(self.effectchain['Volume-param'] or
-                          random.random())
+            self.player.setMul(self.effectchain['Volume-param'] or
+                          0.2 + random.random() * 0.8)
         if self.effectchain['Speed']:
-            player.setFreq(self.effectchain['Speed-param'] or
+            self.player.setFreq(self.effectchain['Speed-param'] or
                            (0.5 + random.random()/2))
+        else:
+            self.player.setFreq(sample.audio_rate)
+        self.player.play()
         if self.effectchain['Distortion']:
-            distortion = pyo.Disto(player,
-                                   drive=self.effectchain['Distortion-param'] or
-                                   random.uniform(0.4, 1),
-                                   slope=0.7)
+            self.distortion.setDrive(self.effectchain['Distortion-param'] or
+                                        (0.5+random.random()/2))
+            self.selector_disto.setVoice(1)
         else:
-            distortion = player
-        if self.effectchain['FreqShift']:
-            freqshift = pyo.FreqShift(distortion + denorm_noise,
-                                      self.effectchain['FreqShift-param'] or
-                                      random.random() * 220)
-        else:
-            freqshift = distortion + denorm_noise
+            self.selector_disto.setVoice(0)
         if self.effectchain['Chorus']:
-            chorus = pyo.Chorus(freqshift,
-                                depth=self.effectchain['Chorus-param'] or
-                                random.uniform(1, 5),
-                                feedback=random.random(),
-                                bal=0.6)
+            self.chorus.setDepth(self.effectchain['Chorus-param'] or
+                                 random.uniform(1, 5))
+            self.chorus.setFeedback(random.random()*0.95)
+            self.selector_chorus.setVoice(1)
         else:
-            chorus = freqshift
+            self.selector_chorus.setVoice(0)
         if self.effectchain['Reverb']:
-            pan = pyo.Freeverb(chorus,
-                                       size=self.effectchain['Reverb-param'] or
-                                       random.random(),
-                                       damp=random.random(), bal=0.7)
+            self.reverb.setSize(self.effectchain['Reverb-param'] or
+                                0.1+random.random()*0.9)
+            self.reverb.setDamp(0.2+random.random()*0.8)
+            self.selector_reverb.setVoice(1)
         else:
-            pan = chorus
-
-        self.output = pyo.Pan(pan,
-                              pan=random.choice([0.01, 0.25, 0.5, 0.75, 0.99]),
-                              spread=0.1)
+            self.selector_reverb.setVoice(0)
+        self.output.setPan(random.choice([0.01, 0.25, 0.5, 0.75, 0.99]))
         self.output.out()
 
     def toggle_effect(self, name, state):
