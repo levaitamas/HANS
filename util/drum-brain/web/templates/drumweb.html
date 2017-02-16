@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<title>Drum Web Control</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable = no">
+	<meta charset="utf-8" />
+	<link rel="stylesheet" type="text/css" href="/static/drumstyle.css">
+    <script src="/static/drumscript.js"></script> 
+</head>
+<body>
+
+<h1>Drum Web Control</h1>
+<hr>
+<form method="post">
+    <button type="button" id="start" onclick="onClick(this.id);">Start</button>
+    <button type="button" id="test" onclick="onClick(this.id);">Test</button>
+    <button type="button" id="exit" onclick="onClick(this.id);">Exit</button>
+</form>
+<hr>
+<p>Select Input</p>
+<div>
+    <form method="post">
+        Roland V-Drum
+        <label class="switch">
+            <input type="checkbox" id="ds" value="off" onclick="chCheck(this.id);">
+            <div class="slider round"></div>
+        </label>
+        HANS Drum Util
+    </form>
+</div>
+<hr>
+<p>Drum Kitz</p>
+<div>
+    <form method="post">
+        <button type="button" id="dk_11" onclick="onClick(this.id);">Funky</button>
+        <button type="button" id="dk_12" onclick="onClick(this.id);">Electro</button>
+        <button type="button" id="dk_13" onclick="onClick(this.id);">Beep</button>
+        <button type="button" id="dk_14" onclick="onClick(this.id);">Noise</button>
+        <button type="button" id="dk_15" onclick="onClick(this.id);">ArseSnd</button>
+    </form>
+</div>
+<hr>
+<p>Effectz</p>
+<form method="post">
+    <p>Volume</p>
+    <label class="switch">
+        <input type="checkbox" id="ec_vol" value="on" onclick="chCheck(this.id);">
+        <div class="slider round"></div>
+    </label>
+    <input type="range" id="ec_vol_p" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
+    <p>Compressor</p>
+    <label class="switch">
+        <input type="checkbox" id="ec_com" value="on" onclick="chCheck(this.id);">
+        <div class="slider round"></div>
+    </label>
+    <input type="range" id="ec_com_p" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
+    <p>Distortion</p>
+    <label class="switch">
+        <input type="checkbox" id="ec_dis" value="on" onclick="chCheck(this.id);">
+        <div class="slider round"></div>
+    </label>
+    <input type="range" id="ec_dis_p" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
+    <p>FreqShift</p>
+    <label class="switch">
+        <input type="checkbox" id="ec_fsh" value="on" onclick="chCheck(this.id);">
+        <div class="slider round"></div>
+    </label>
+    <input type="range" id="ec_fsh_p" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
+    <p>Chorus</p>
+    <label class="switch">
+        <input type="checkbox" id="ec_cho" value="on" onclick="chCheck(this.id);">
+        <div class="slider round"></div>
+    </label>
+    <input type="range" id="ec_cho_p" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
+    <p>Reverb</p>
+    <label class="switch">
+        <input type="checkbox" id="ec_rev" value="on" onclick="chCheck(this.id);">
+        <div class="slider round"></div>
+    </label>
+    <input type="range" id="ec_rev_p" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
+</form>
+<hr>
+</body>
+</html> 
