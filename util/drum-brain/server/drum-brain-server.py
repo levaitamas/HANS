@@ -144,7 +144,7 @@ def midinote2sample(pad, velocity, low, high):
 
 class Modulator:
     def __init__(self):
-        self.input_id = 1;
+        self.input_id = 0;
         # Input IDs
         # 1 - HANSDRUM
         # 0 - External
