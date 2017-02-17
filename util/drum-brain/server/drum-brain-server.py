@@ -7,7 +7,7 @@ Copyright (C) 2016-     Richárd Beregi <richard.beregi@sztaki.mta.hu>
 Copyright (C) 2016-     Tamás Lévai    <levait@tmit.bme.hu>
 """
 try:
-    from pyo import *
+    import pyo
 except ImportError:
     raise SystemError("Python-Pyo not found. Please, install it.")
 import SocketServer
@@ -15,8 +15,6 @@ import argparse
 import fnmatch
 import os
 import sys
-import random
-import time
 
 
 class Sample:
@@ -24,11 +22,11 @@ class Sample:
         assert path
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
-        self.audio = SndTable(path, chnl=1)
+        self.audio = pyo.SndTable(path, chnl=1)
         self.audio_rate = self.audio.getRate()
-        self.player = TableRead(table=self.audio,
-                                freq=self.audio_rate,
-                                loop=False).stop()
+        self.player = pyo.TableRead(table=self.audio,
+                                    freq=self.audio_rate,
+                                    loop=False).stop()
 
 
 class SamplePlayer:
@@ -46,7 +44,7 @@ class SamplePlayer:
         self.mixer = None
         categories = ['kick', 'snare', 'tom1', 'tom2', 'tom3',
                       'crash', 'ride', 'hho', 'hhc', 'foot']
-        self.mixer = Mixer(outs=1, chnls=len(categories))
+        self.mixer = pyo.Mixer(outs=1, chnls=len(categories))
         for sample in categories:
             sampleH = "%sH" % sample
             if self.samples[sampleH]:
@@ -60,7 +58,8 @@ class SamplePlayer:
                             self.samples[pad].player)
         self.mixer.setAmp(pad[:-1], 0, 0.1)
         self.samples[pad].player.play()
-        self.modulator.execute(self.mixer[0])
+        self.modulator.set_player(self.mixer[0])
+        self.modulator.execute()
 
     def set_kit(self, category):
         self.selected_kit = category
@@ -89,7 +88,7 @@ class SamplePlayer:
 
 class MidiProc:
     def __init__(self):
-        self.rawm = RawMidi(handle_midievent)
+        self.rawm = pyo.RawMidi(handle_midievent)
 
 # https://static.roland.com/assets/media/pdf/HD-1_r_e2.pdf
 
@@ -145,6 +144,11 @@ def midinote2sample(pad, velocity, low, high):
 
 class Modulator:
     def __init__(self):
+        self.input_id = 1;
+        # Input IDs
+        # 1 - HANSDRUM
+        # 0 - External
+
         # Effect Chain:
         # Input -> 'Compressor' - >'Distortion'
         # -> 'Frequency Shifter' -> 'Chorus' -> 'Reverb'
@@ -165,40 +169,68 @@ class Modulator:
                             'Chorus': False, 'Chorus-param': 0,
                             'Reverb': False, 'Reverb-param': 0}
 
-    def execute(self, player):
-        denorm_noise = Noise(1e-24)
-        if self.effectchain['Compressor']:
-            compressor = Compress(player,
-                                  ratio=self.effectchain['Compressor-param'],
-                                  thresh=-36,
-                                  falltime=0.18)
-        else:
-            compressor = player
-        if self.effectchain['Distortion']:
-            distortion = Disto(compressor,
-                               drive=self.effectchain['Distortion-param'],
-                               slope=0.7)
-        else:
-            distortion = compressor
-        if self.effectchain['FreqShift']:
-            freqshift = FreqShift(distortion + denorm_noise,
-                                  self.effectchain['FreqShift-param'])
-        else:
-            freqshift = distortion + denorm_noise
-        if self.effectchain['Chorus']:
-            chorus = Chorus(freqshift,
-                            depth=self.effectchain['Chorus-param'],
-                            feedback=random.random(),
-                            bal=0.6)
-        else:
-            chorus = freqshift
-        if self.effectchain['Reverb']:
-            self.output = Freeverb(chorus,
-                                   size=self.effectchain['Reverb-param'],
-                                   damp=0.6 + random.random(),
+        self.player = pyo.TableRead(pyo.NewTable(1), loop=False)
+        self.denorm_noise = pyo.Noise(1e-24)
+        self.selector_input = pyo.Selector(
+            inputs=[pyo.Input(), self.player])
+
+        self.compressor = pyo.Compress(self.selector_input,
+                                       ratio=self.effectchain['Compressor-param'],
+                                       thresh=-36,
+                                       falltime=0.18)
+        self.selector_comp = pyo.Selector(
+            inputs=[self.selector_input, self.compressor])
+
+        self.distortion = pyo.Disto(self.selector_comp,
+                                    drive=self.effectchain['Distortion-param'],
+                                    slope=0.7)
+        self.selector_disto = pyo.Selector(
+            inputs=[self.selector_comp, self.distortion])
+
+        self.freqshift = pyo.FreqShift(self.selector_disto + self.denorm_noise,
+                                       shift=self.effectchain['FreqShift-param'])
+        self.selector_freqshift = pyo.Selector(
+            inputs=[self.selector_disto, self.freqshift])
+
+        self.chorus = pyo.Chorus(self.selector_freqshift + self.denorm_noise,
+                                 bal=0.6)
+        self.selector_chorus = pyo.Selector(
+            inputs=[self.selector_freqshift, self.chorus])
+
+        self.reverb = pyo.Freeverb(self.selector_chorus + self.denorm_noise,
                                    bal=0.7)
+        self.output = pyo.Selector(inputs=[self.selector_chorus, self.reverb])
+
+    def set_player(self, player_out):
+        self.player = player_out
+        self.selector_input.setInputs([pyo.Input(), self.player])
+
+    def execute(self):
+        if self.effectchain['Compressor']:
+            self.compressor.setRatio(self.effectchain['Compressor-param'])
+            self.selector_comp.setVoice(1)
         else:
-            self.output = chorus
+            self.selector_comp.setVoice(0)
+        if self.effectchain['Distortion']:
+            self.distortion.setDrive(self.effectchain['Distortion-param'])
+            self.selector_disto.setVoice(1)
+        else:
+            self.selector_disto.setVoice(0)
+        if self.effectchain['FreqShift']:
+            self.freqshift.setShift(self.effectchain['FreqShift-param'])
+            self.selector_freqshift.setVoice(1)
+        else:
+            self.selector_freqshift.setVoice(0)
+        if self.effectchain['Chorus']:
+            self.chorus.setDepth(self.effectchain['Chorus-param'])
+            self.selector_chorus.setVoice(1)
+        else:
+            self.selector_chorus.setVoice(0)
+        if self.effectchain['Reverb']:
+            self.reverb.setSize(self.effectchain['Reverb-param'])
+            self.selector_reverb.setVoice(1)
+        else:
+            self.selector_reverb.setVoice(0)
         if self.effectchain['Volume']:
             self.output.setMul(self.effectchain['Volume-param'])
         else:
@@ -214,6 +246,20 @@ class Modulator:
         if param in self.effectchain:
             self.effectchain[param] = value
 
+    def set_input(self, value):
+        if value == 1:
+            self.input_id = 1
+            self.selector_input.setVoice(1)
+        elif value == 0:
+            self.input_id = 1
+            self.selector_input.setVoice(1)
+
+    def toggle_input(self):
+        if self.input_id:
+            self.set_input(0)
+        else:
+            self.set_input(1)
+
 
 class NetConHandler(SocketServer.BaseRequestHandler):
     def handle(self):
@@ -226,13 +272,13 @@ class NetConHandler(SocketServer.BaseRequestHandler):
             sampleplayer.set_kit(command.split(':')[1])
         elif command.startswith("ec"): # effect chain turn on & off
             modulator.toggle_effect(command.split(':')[1])
-        elif command.startswith("ds"): # drum input select -- midi or line in            
-            drumselector() # todo
+        elif command.startswith("ds"): # drum input select -- midi or line in
+            modulator.toggle_input()
         elif command == 'test': # test system with sample sound
             test() #todo
         elif command == 'exit':
-            sys.exit(0)
-            # and shutdown pi?
+            # quite destructive. should be confirmed before issuing
+            os.system('sudo poweroff')
 
 
 class ConnectionManager():
@@ -259,22 +305,22 @@ if __name__ == "__main__":
         print("Invalid sample root!")
         sys.exit(64)
 
-    if int(''.join(map(str, getVersion()))) < 76:
+    if int(''.join(map(str, pyo.getVersion()))) < 76:
         # RawMidi is supported only since Python-Pyo version 0.7.6
         raise SystemError("Please, update your Python-Pyo install" +
                           "to version 0.7.6 or later.")
 
     if sys.platform.startswith("win"):
-        server = Server()
+        server = pyo.Server()
     else:
-        server = Server(audio='jack', jackname='HANSDRUM')
+        server = pyo.Server(duplex=1, audio='jack', jackname='HANSDRUM')
 
     if args.midi:
         server.setMidiInputDevice(args.midi)
     else:
-        pm_list_devices()
+        pyo.pm_list_devices()
         inid = -1
-        while (inid > pm_count_devices()-1 and inid != 99) or inid < 0:
+        while (inid > pyo.pm_count_devices()-1 and inid != 99) or inid < 0:
             inid = input("Please select input ID [99 for all]: ")
             server.setMidiInputDevice(inid)
     server.boot()
