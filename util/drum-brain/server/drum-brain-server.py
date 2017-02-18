@@ -57,9 +57,9 @@ class SamplePlayer:
         self.mixer.addInput(pad[:-1],
                             self.samples[pad].player)
         self.mixer.setAmp(pad[:-1], 0, 0.1)
-        self.samples[pad].player.play()
         self.modulator.set_player(self.mixer[0])
         self.modulator.execute()
+        self.samples[pad].player.play()
 
     def set_kit(self, category):
         self.selected_kit = category
@@ -200,6 +200,8 @@ class Modulator:
         self.reverb = pyo.Freeverb(self.selector_chorus + self.denorm_noise,
                                    bal=0.7)
         self.output = pyo.Selector(inputs=[self.selector_chorus, self.reverb])
+        self.output = self.output.mix(2)
+        self.output.out()
 
     def set_player(self, player_out):
         self.player = player_out
@@ -235,8 +237,6 @@ class Modulator:
             self.output.setMul(self.effectchain['Volume-param'])
         else:
             self.output.setMul(1)
-        self.output = self.output.mix(2)
-        self.output.out()
 
     def toggle_effect(self, name, state):
         if name in self.effectchain:
