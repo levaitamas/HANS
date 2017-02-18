@@ -299,6 +299,9 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--sampleroot',
                         help='Samples root folder',
                         default='.')
+    parser.add_argument('-v', '--verbose',
+                        help='Turn on verbose mode',
+                        action='store_true')
     args = parser.parse_args()
 
     if not os.path.isdir(args.sampleroot):
@@ -314,6 +317,9 @@ if __name__ == "__main__":
         server = pyo.Server()
     else:
         server = pyo.Server(duplex=1, audio='jack', jackname='HANSDRUM')
+
+    if args.verbose:
+        server.setVerbosity(8)
 
     if args.midi:
         server.setMidiInputDevice(args.midi)
