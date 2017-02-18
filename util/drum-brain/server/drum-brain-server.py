@@ -193,11 +193,13 @@ class Modulator:
             inputs=[self.selector_disto, self.freqshift])
 
         self.chorus = pyo.Chorus(self.selector_freqshift + self.denorm_noise,
+                                 depth=self.effectchain['Chorus-param'],
                                  bal=0.6)
         self.selector_chorus = pyo.Selector(
             inputs=[self.selector_freqshift, self.chorus])
 
         self.reverb = pyo.Freeverb(self.selector_chorus + self.denorm_noise,
+                                   size=self.effectchain['Reverb-param'],
                                    bal=0.7)
         self.output = pyo.Selector(inputs=[self.selector_chorus, self.reverb])
         self.output = self.output.mix(2)
@@ -209,32 +211,32 @@ class Modulator:
 
     def execute(self):
         if self.effectchain['Compressor']:
-            self.compressor.setRatio(self.effectchain['Compressor-param'])
+            self.compressor.setRatio(self.effectchain['Compressor-param']*0.1)
             self.selector_comp.setVoice(1)
         else:
             self.selector_comp.setVoice(0)
         if self.effectchain['Distortion']:
-            self.distortion.setDrive(self.effectchain['Distortion-param'])
+            self.distortion.setDrive(self.effectchain['Distortion-param']*0.01)
             self.selector_disto.setVoice(1)
         else:
             self.selector_disto.setVoice(0)
         if self.effectchain['FreqShift']:
-            self.freqshift.setShift(self.effectchain['FreqShift-param'])
+            self.freqshift.setShift(self.effectchain['FreqShift-param']*10)
             self.selector_freqshift.setVoice(1)
         else:
             self.selector_freqshift.setVoice(0)
         if self.effectchain['Chorus']:
-            self.chorus.setDepth(self.effectchain['Chorus-param'])
+            self.chorus.setDepth(self.effectchain['Chorus-param']*0.05)
             self.selector_chorus.setVoice(1)
         else:
             self.selector_chorus.setVoice(0)
         if self.effectchain['Reverb']:
-            self.reverb.setSize(self.effectchain['Reverb-param'])
+            self.reverb.setSize(self.effectchain['Reverb-param']*0.01)
             self.selector_reverb.setVoice(1)
         else:
             self.selector_reverb.setVoice(0)
         if self.effectchain['Volume']:
-            self.output.setMul(self.effectchain['Volume-param'])
+            self.output.setMul(self.effectchain['Volume-param']*0.011)
         else:
             self.output.setMul(1)
 
@@ -264,14 +266,45 @@ class Modulator:
 class NetConHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         command = self.request[0].strip()
-        print(command)
         # todo: choose command format (maybe JSON?)
         #       and implement commands.
         #       some ugly examples:
         if command.startswith("dk"): # extra drumkit selector for midi input
             sampleplayer.set_kit(command.split(':')[1])
-        elif command.startswith("ec"): # effect chain turn on & off
-            modulator.toggle_effect(command.split(':')[1])
+        elif command.startswith("es"): # effect chain switch
+	    effect_name = command.split('_')[1].split(':')[0]   
+	    if effect_name == "vol":
+		effect_name = "Volume"
+	    elif effect_name == "com":
+		effect_name = "Compressor"
+	    elif effect_name == "dis":
+		effect_name = "Distortion"
+	    elif effect_name == "fsh":
+		effect_name = "FreqShift"
+	    elif effect_name == "cho":
+		effect_name = "Chorus"
+	    elif effect_name == "rev":
+		effect_name = "Reverb"
+            if command.split(':')[1] == 'on':
+                modulator.toggle_effect(effect_name, True)
+            elif command.split(':')[1] == 'off':
+                modulator.toggle_effect(effect_name, False)
+        elif command.startswith("ec"): # effect chain parameter
+	    effect_name = command.split('_')[1].split(':')[0]
+	    if effect_name == "vol":
+		effect_name = "Volume-param"
+	    elif effect_name == "com":
+		effect_name = "Compressor-param"
+	    elif effect_name == "dis":
+		effect_name = "Distortion-param"
+	    elif effect_name == "fsh":
+		effect_name = "FreqShift-param"
+	    elif effect_name == "cho":
+		effect_name = "Chorus-param"
+	    elif effect_name == "rev":
+		effect_name = "Reverb-param"
+	    value = float(command.split(':')[1])
+            modulator.set_effect_param(effect_name, value)
         elif command.startswith("ds"): # drum input select -- midi or line in
             modulator.toggle_input()
         elif command == 'test': # test system with sample sound

@@ -8,14 +8,14 @@ function chCheck(id) {
     if (e.getAttribute('type') == "checkbox") {
         if (e.checked) {
             e.setAttribute('value', 'on');
-            if (id.includes("ec")) {
-                document.getElementById(id + '_p').disabled = false;
+            if (id.includes("es")) {
+                document.getElementById('ec_' +  id.split('_')[1] + '_p').disabled = false;
             }
         }
         else {
             e.setAttribute('value', 'off');
-            if (id.includes("ec")) {
-                document.getElementById(id + '_p').disabled = true;
+            if (id.includes("es")) {
+                document.getElementById('ec_' + id.split('_')[1] + '_p').disabled = true;
             }
         }
     }

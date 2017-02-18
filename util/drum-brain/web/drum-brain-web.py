@@ -29,7 +29,6 @@ def index():
             msg = data['id']
             if(data['value'] != "undefined"):
                 msg += ":" + data['value']
-            print(msg)
             sndStr(msg)
     return render_template('drumweb.html')
 
