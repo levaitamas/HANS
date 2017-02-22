@@ -358,6 +358,10 @@ class Modulator:
                             'Chorus': False, 'Chorus-param': 0,
                             'Reverb': False, 'Reverb-param': 0}
 
+        self.player = pyo.TableRead(pyo.NewTable(1), loop=False)
+        self.denorm_noise = pyo.Noise(1e-24)
+
+
     def execute(self):
         if self.enable_ai:
             self.sigproc.execute()
@@ -366,28 +370,27 @@ class Modulator:
         sample = self.chooser.output
         if sample is None:
             return
-        player = pyo.TableRead(table=sample.audio,
-                           freq=sample.audio_rate,
-                           loop=False).play()
-        denorm_noise = pyo.Noise(1e-24)
+        self.player.reset()
+        self.player.setTable(sample.audio)
         if self.effectchain['Volume']:
-            player.setMul(self.effectchain['Volume-param'] or
-                          random.random())
+            self.player.setMul(0.001 + self.effectchain['Volume-param'])
         if self.effectchain['Speed']:
-            player.setFreq(self.effectchain['Speed-param'] or
-                           (0.5 + random.random()/2))
+            self.player.setFreq(0.001 + self.effectchain['Speed-param'])
+        else:
+            self.player.setFreq(sample.audio_rate)
+        self.player.play()
         if self.effectchain['Distortion']:
-            distortion = pyo.Disto(player,
+            distortion = pyo.Disto(self.player,
                                    drive=self.effectchain['Distortion-param'],
                                    slope=0.7)
         else:
-            distortion = player
+            distortion = self.player
         if self.effectchain['Chorus']:
-            chorus = pyo.Chorus(distortion + denorm_noise,
+            chorus = pyo.Chorus(distortion + self.denorm_noise,
                                 depth=self.effectchain['Chorus-param'],
                                 bal=0.6)
         else:
-            chorus = distortion + denorm_noise
+            chorus = distortion + self.denorm_noise
         if self.effectchain['Reverb']:
             pan = pyo.Freeverb(chorus,
                                size=self.effectchain['Reverb-param'],
