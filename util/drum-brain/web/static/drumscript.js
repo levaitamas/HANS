@@ -11,11 +11,25 @@ function chCheck(id) {
             if (id.includes("es")) {
                 document.getElementById('ec_' +  id.split('_')[1] + '_p').disabled = false;
             }
+            if (id.includes("ds")) {
+                document.getElementById('dk:11').disabled = false;
+                document.getElementById('dk:12').disabled = false;
+                document.getElementById('dk:13').disabled = false;
+                document.getElementById('dk:14').disabled = false;
+                document.getElementById('dk:15').disabled = false;
+            }
         }
         else {
             e.setAttribute('value', 'off');
             if (id.includes("es")) {
                 document.getElementById('ec_' + id.split('_')[1] + '_p').disabled = true;
+            }
+            if (id.includes("ds")) {
+                document.getElementById('dk:11').disabled = true;
+                document.getElementById('dk:12').disabled = true;
+                document.getElementById('dk:13').disabled = true;
+                document.getElementById('dk:14').disabled = true;
+                document.getElementById('dk:15').disabled = true;
             }
         }
     }

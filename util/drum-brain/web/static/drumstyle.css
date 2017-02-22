@@ -18,6 +18,10 @@ button{
 	text-align: center;	
     border-radius: 34px;
 }
+button:disabled{
+    background: #ccc;
+}
+
 
 hr{
     display: block;

@@ -13,8 +13,9 @@
 <hr>
 <form method="post">
     <button type="button" id="start" onclick="onClick(this.id);">Start</button>
-    <button type="button" id="test" onclick="onClick(this.id);">Test</button>
     <button type="button" id="exit" onclick="onClick(this.id);">Exit</button>
+    <button type="button" id="reboot" onclick="onClick(this.id);">Reboot</button>
+    <button type="button" id="poweroff" onclick="onClick(this.id);">Power Off</button>
 </form>
 <hr>
 <p>Select Input</p>
@@ -22,7 +23,7 @@
     <form method="post">
         Roland V-Drum
         <label class="switch">
-            <input type="checkbox" id="ds" value="off" onclick="chCheck(this.id);">
+            <input type="checkbox" id="ds" value="off" onclick="chCheck(this.id);" disabled="disabled">
             <div class="slider round"></div>
         </label>
         HANS Drum Util
@@ -32,11 +33,11 @@
 <p>Drum Kitz</p>
 <div>
     <form method="post">
-        <button type="button" id="dk:11" onclick="onClick(this.id);">Funky</button>
-        <button type="button" id="dk:12" onclick="onClick(this.id);">Electro</button>
-        <button type="button" id="dk:13" onclick="onClick(this.id);">Beep</button>
-        <button type="button" id="dk:14" onclick="onClick(this.id);">Noise</button>
-        <button type="button" id="dk:15" onclick="onClick(this.id);">ArseSnd</button>
+        <button type="button" id="dk:11" onclick="onClick(this.id);" disabled="disabled" >Funky</button>
+        <button type="button" id="dk:12" onclick="onClick(this.id);" disabled="disabled" >Electro</button>
+        <button type="button" id="dk:13" onclick="onClick(this.id);" disabled="disabled" >Beep</button>
+        <button type="button" id="dk:14" onclick="onClick(this.id);" disabled="disabled" >Noise</button>
+        <button type="button" id="dk:15" onclick="onClick(this.id);" disabled="disabled" >ArseSnd</button>
     </form>
 </div>
 <hr>

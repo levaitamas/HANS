@@ -9,6 +9,7 @@ Copyright (C) 2016-     Tamás Lévai    <levait@tmit.bme.hu>
 from flask import Flask, request, render_template
 import argparse
 import socket
+import os
 
 app = Flask(__name__)
 drum_addr = 'localhost'
@@ -29,7 +30,16 @@ def index():
             msg = data['id']
             if(data['value'] != "undefined"):
                 msg += ":" + data['value']
-            sndStr(msg)
+            if(msg == "start"):
+                os.system("python2 /home/alarm/HANS/util/drum-brain/server/drum-brain-server.py -m 3 &")
+            elif(msg == "exit"):
+                os.system("sudo  pkill -f drum-brain-server.py")
+            elif(msg == "reboot"):
+                os.system('sudo reboot')
+            elif(msg == "poweroff"):
+                os.system('sudo poweroff')
+            else:
+                sndStr(msg)
     return render_template('drumweb.html')
 
 
