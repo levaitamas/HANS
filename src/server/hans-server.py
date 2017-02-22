@@ -157,6 +157,7 @@ class SigProc:
 
         self.rulelist.append(self.Rule("amp", "Nature", 0.7))
         self.rulelist.append(self.Rule("cen", "Nature", 0.85))
+
         self.rulelist.append(self.Rule("amp", "Beep", 0.7))
         self.rulelist.append(self.Rule("yin", "Beep", 1.0))
 
@@ -340,7 +341,6 @@ class Modulator:
         self.sigproc = sigproc
         self.output = None
         self.enable_ai = enable_ai
-
         # Effect Chain:
         # 'Volume' -> 'Speed' -> 'Distortion'
         # -> 'Chorus' -> 'Reverb' -> 'Pan'
@@ -358,21 +358,6 @@ class Modulator:
                             'Chorus': False, 'Chorus-param': 0,
                             'Reverb': False, 'Reverb-param': 0}
 
-        self.player = pyo.TableRead(pyo.NewTable(1), loop=False)
-        self.denorm_noise = pyo.Noise(1e-24)
-        self.distortion = pyo.Disto(self.player, drive=0.7, slope=0.7)
-        self.selector_disto = pyo.Selector(
-            inputs=[self.player, self.distortion])
-        self.chorus = pyo.Chorus(self.selector_disto + self.denorm_noise,
-                                 bal=0.6)
-        self.selector_chorus = pyo.Selector(
-            inputs=[self.selector_disto, self.chorus])
-        self.reverb = pyo.Freeverb(self.selector_chorus + self.denorm_noise,
-                                   bal=0.7)
-        self.selector_reverb = pyo.Selector(
-            inputs=[self.selector_chorus, self.reverb])
-        self.output = pyo.Pan(self.selector_reverb, outs=2, spread=0.1)
-
     def execute(self):
         if self.enable_ai:
             self.sigproc.execute()
@@ -381,37 +366,38 @@ class Modulator:
         sample = self.chooser.output
         if sample is None:
             return
-        self.player.setTable(sample.audio)
+        player = pyo.TableRead(table=sample.audio,
+                           freq=sample.audio_rate,
+                           loop=False).play()
+        denorm_noise = pyo.Noise(1e-24)
         if self.effectchain['Volume']:
-            self.player.setMul(self.effectchain['Volume-param'] or
-                          0.2 + random.random() * 0.8)
+            player.setMul(self.effectchain['Volume-param'] or
+                          random.random())
         if self.effectchain['Speed']:
-            self.player.setFreq(self.effectchain['Speed-param'] or
+            player.setFreq(self.effectchain['Speed-param'] or
                            (0.5 + random.random()/2))
-        else:
-            self.player.setFreq(sample.audio_rate)
-        self.player.play()
         if self.effectchain['Distortion']:
-            self.distortion.setDrive(self.effectchain['Distortion-param'] or
-                                        (0.5+random.random()/2))
-            self.selector_disto.setVoice(1)
+            distortion = pyo.Disto(player,
+                                   drive=self.effectchain['Distortion-param'],
+                                   slope=0.7)
         else:
-            self.selector_disto.setVoice(0)
+            distortion = player
         if self.effectchain['Chorus']:
-            self.chorus.setDepth(self.effectchain['Chorus-param'] or
-                                 random.uniform(1, 5))
-            self.chorus.setFeedback(random.random()*0.95)
-            self.selector_chorus.setVoice(1)
+            chorus = pyo.Chorus(distortion + denorm_noise,
+                                depth=self.effectchain['Chorus-param'],
+                                bal=0.6)
         else:
-            self.selector_chorus.setVoice(0)
+            chorus = distortion + denorm_noise
         if self.effectchain['Reverb']:
-            self.reverb.setSize(self.effectchain['Reverb-param'] or
-                                0.1+random.random()*0.9)
-            self.reverb.setDamp(0.2+random.random()*0.8)
-            self.selector_reverb.setVoice(1)
+            pan = pyo.Freeverb(chorus,
+                               size=self.effectchain['Reverb-param'],
+                               bal=0.7)
         else:
-            self.selector_reverb.setVoice(0)
-        self.output.setPan(random.choice([0.01, 0.25, 0.5, 0.75, 0.99]))
+            pan = chorus
+
+        self.output = pyo.Pan(pan,
+                              pan=random.choice([0.01, 0.25, 0.5, 0.75, 0.99]),
+                              spread=0.1)
         self.output.out()
 
     def toggle_effect(self, name, state):
