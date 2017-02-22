@@ -31,7 +31,6 @@ class SeedGen:
 
 class Sample:
     def __init__(self, path, category=None):
-        assert path
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
         self.audio = pyo.SndTable(path, chnl=1)
@@ -231,8 +230,6 @@ class SigProc:
 class Chooser:
     def __init__(self, seed_gen, sigproc,
                  sample_root='.', enable_ai=True):
-        assert seed_gen
-        assert sigproc
         self.sigproc = sigproc
         self.seedgen = seed_gen
         self.sample_root = sample_root
@@ -335,8 +332,6 @@ def doTheWookieeBoogie():
 
 class Modulator:
     def __init__(self, chooser, sigproc, enable_ai=True):
-        assert chooser
-        assert sigproc
         self.chooser = chooser
         self.sigproc = sigproc
         self.output = None
