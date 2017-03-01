@@ -29,7 +29,7 @@ def index():
         else:
             msg = data['id']
             if(data['value'] != "undefined"):
-                msg += ":" + data['value']
+                msg += "." + data['value']
             if(msg == "start"):
                 os.system("python2 /home/alarm/HANS/util/drum-brain/server/drum-brain-server.py -m 3 &")
             elif(msg == "exit"):
@@ -39,6 +39,7 @@ def index():
             elif(msg == "poweroff"):
                 os.system('sudo poweroff')
             else:
+                print(msg)
                 sndStr(msg)
     return render_template('drumweb.html')
 

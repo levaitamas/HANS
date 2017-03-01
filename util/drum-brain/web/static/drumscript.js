@@ -9,27 +9,27 @@ function chCheck(id) {
         if (e.checked) {
             e.setAttribute('value', 'on');
             if (id.includes("es")) {
-                document.getElementById('ec_' +  id.split('_')[1] + '_p').disabled = false;
+                document.getElementById('ec.' +  id.split('.')[1] + '-param').disabled = false;
             }
             if (id.includes("ds")) {
-                document.getElementById('dk:11').disabled = false;
-                document.getElementById('dk:12').disabled = false;
-                document.getElementById('dk:13').disabled = false;
-                document.getElementById('dk:14').disabled = false;
-                document.getElementById('dk:15').disabled = false;
+                document.getElementById('DK11').disabled = false;
+                document.getElementById('DK12').disabled = false;
+                document.getElementById('DK13').disabled = false;
+                document.getElementById('DK14').disabled = false;
+                document.getElementById('DK15').disabled = false;
             }
         }
         else {
             e.setAttribute('value', 'off');
             if (id.includes("es")) {
-                document.getElementById('ec_' + id.split('_')[1] + '_p').disabled = true;
+                document.getElementById('ec.' + id.split('.')[1] + '-param').disabled = true;
             }
             if (id.includes("ds")) {
-                document.getElementById('dk:11').disabled = true;
-                document.getElementById('dk:12').disabled = true;
-                document.getElementById('dk:13').disabled = true;
-                document.getElementById('dk:14').disabled = true;
-                document.getElementById('dk:15').disabled = true;
+                document.getElementById('DK11').disabled = true;
+                document.getElementById('DK12').disabled = true;
+                document.getElementById('DK13').disabled = true;
+                document.getElementById('DK14').disabled = true;
+                document.getElementById('DK15').disabled = true;
             }
         }
     }

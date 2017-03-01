@@ -271,41 +271,17 @@ class NetConHandler(SocketServer.BaseRequestHandler):
         # todo: choose command format (maybe JSON?)
         #       and implement commands.
         #       some ugly examples:
-        if command.startswith("dk"): # extra drumkit selector for midi input
-            sampleplayer.set_kit(command.split(':')[1])
+        if command.startswith("DK"): # extra drumkit selector for midi input
+            sampleplayer.set_kit(command)
         elif command.startswith("es"): # effect chain switch
-	    effect_name = command.split('_')[1].split(':')[0]   
-	    if effect_name == "vol":
-		effect_name = "Volume"
-	    elif effect_name == "com":
-		effect_name = "Compressor"
-	    elif effect_name == "dis":
-		effect_name = "Distortion"
-	    elif effect_name == "fsh":
-		effect_name = "FreqShift"
-	    elif effect_name == "cho":
-		effect_name = "Chorus"
-	    elif effect_name == "rev":
-		effect_name = "Reverb"
-            if command.split(':')[1] == 'on':
+            effect_name = command.split('.')[1] 
+            if command.split('.')[2] == 'on':
                 modulator.toggle_effect(effect_name, True)
-            elif command.split(':')[1] == 'off':
+            elif command.split('.')[2] == 'off':
                 modulator.toggle_effect(effect_name, False)
         elif command.startswith("ec"): # effect chain parameter
-	    effect_name = command.split('_')[1].split(':')[0]
-	    if effect_name == "vol":
-		effect_name = "Volume-param"
-	    elif effect_name == "com":
-		effect_name = "Compressor-param"
-	    elif effect_name == "dis":
-		effect_name = "Distortion-param"
-	    elif effect_name == "fsh":
-		effect_name = "FreqShift-param"
-	    elif effect_name == "cho":
-		effect_name = "Chorus-param"
-	    elif effect_name == "rev":
-		effect_name = "Reverb-param"
-	    value = float(command.split(':')[1])
+            effect_name = command.split('.')[1]
+            value = float(command.split('.')[2])
             modulator.set_effect_param(effect_name, value)
         elif command.startswith("ds"): # drum input select -- midi or line in
             modulator.toggle_input()

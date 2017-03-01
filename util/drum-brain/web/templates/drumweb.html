@@ -33,11 +33,11 @@
 <p>Drum Kitz</p>
 <div>
     <form method="post">
-        <button type="button" id="dk:11" onclick="onClick(this.id);" disabled="disabled" >Funky</button>
-        <button type="button" id="dk:12" onclick="onClick(this.id);" disabled="disabled" >Electro</button>
-        <button type="button" id="dk:13" onclick="onClick(this.id);" disabled="disabled" >Beep</button>
-        <button type="button" id="dk:14" onclick="onClick(this.id);" disabled="disabled" >Noise</button>
-        <button type="button" id="dk:15" onclick="onClick(this.id);" disabled="disabled" >ArseSnd</button>
+        <button type="button" id="DK11" onclick="onClick(this.id);" disabled="disabled" >Funky</button>
+        <button type="button" id="DK12" onclick="onClick(this.id);" disabled="disabled" >Electro</button>
+        <button type="button" id="DK13" onclick="onClick(this.id);" disabled="disabled" >Beep</button>
+        <button type="button" id="DK14" onclick="onClick(this.id);" disabled="disabled" >Noise</button>
+        <button type="button" id="DK15" onclick="onClick(this.id);" disabled="disabled" >ArseSnd</button>
     </form>
 </div>
 <hr>
@@ -45,40 +45,40 @@
 <form method="post">
     <p>Volume</p>
     <label class="switch">
-        <input type="checkbox" id="es_vol" value="on" onclick="chCheck(this.id);">
+        <input type="checkbox" id="es.Volume" value="on" onclick="chCheck(this.id);">
         <div class="slider round"></div>
     </label>
-    <input type="range" id="ec_vol_p" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
+    <input type="range" id="ec.Volume-param" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
     <p>Compressor</p>
     <label class="switch">
-        <input type="checkbox" id="es_com" value="on" onclick="chCheck(this.id);">
+        <input type="checkbox" id="es.Compressor" value="on" onclick="chCheck(this.id);">
         <div class="slider round"></div>
     </label>
-    <input type="range" id="ec_com_p" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
+    <input type="range" id="ec.Compressor-param" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
     <p>Distortion</p>
     <label class="switch">
-        <input type="checkbox" id="es_dis" value="on" onclick="chCheck(this.id);">
+        <input type="checkbox" id="es.Distortion" value="on" onclick="chCheck(this.id);">
         <div class="slider round"></div>
     </label>
-    <input type="range" id="ec_dis_p" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
+    <input type="range" id="ec.Distortion-param" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
     <p>FreqShift</p>
     <label class="switch">
-        <input type="checkbox" id="es_fsh" value="on" onclick="chCheck(this.id);">
+        <input type="checkbox" id="es.FreqShift" value="on" onclick="chCheck(this.id);">
         <div class="slider round"></div>
     </label>
-    <input type="range" id="ec_fsh_p" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
+    <input type="range" id="ec.FreqShift-param" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
     <p>Chorus</p>
     <label class="switch">
-        <input type="checkbox" id="es_cho" value="on" onclick="chCheck(this.id);">
+        <input type="checkbox" id="es.Chorus" value="on" onclick="chCheck(this.id);">
         <div class="slider round"></div>
     </label>
-    <input type="range" id="ec_cho_p" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
+    <input type="range" id="ec.Chorus-param" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
     <p>Reverb</p>
     <label class="switch">
-        <input type="checkbox" id="es_rev" value="on" onclick="chCheck(this.id);">
+        <input type="checkbox" id="es.Reverb" value="on" onclick="chCheck(this.id);">
         <div class="slider round"></div>
     </label>
-    <input type="range" id="ec_rev_p" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
+    <input type="range" id="ec.Reverb-param" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
 </form>
 <hr>
 </body>
