@@ -243,10 +243,12 @@ class Modulator:
     def toggle_effect(self, name, state):
         if name in self.effectchain:
             self.effectchain[name] = state
+            self.execute()
 
     def set_effect_param(self, param, value):
         if param in self.effectchain:
             self.effectchain[param] = value
+            self.execute()
 
     def set_input(self, value):
         if value == 1:

@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{1bebeccd-4da6-4c1e-b0dd-9879a648d1d7}</ProjectGuid>
     <ProjectHome />
-    <StartupFile>util\drum-brain.py</StartupFile>
+    <StartupFile>util\drum-brain\web\drum-brain-web.py</StartupFile>
     <SearchPath />
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
@@ -13,7 +13,8 @@
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterId />
     <InterpreterVersion />
-    <CommandLineArguments>-m 99</CommandLineArguments>
+    <CommandLineArguments>
+    </CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
@@ -40,16 +41,19 @@
     <Content Include="src\web\templates\index.html" />
     <Content Include="src\web\static\style.css" />
     <Content Include="util\concert2ytvideo.sh" />
+    <Content Include="util\drum-brain\web\static\drumscript.js" />
+    <Content Include="util\drum-brain\web\static\drumstyle.css" />
+    <Content Include="util\drum-brain\web\templates\drumweb.html" />
     <Content Include="util\session2ytvideo.sh" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="src\gui\hans-gui.py" />
     <Compile Include="src\server\hans-server.py" />
     <Compile Include="src\web\hans_web.py" />
-    <Compile Include="util\drum-brain.py">
-      <SubType>Code</SubType>
-    </Compile>
+    <Compile Include="util\drum-brain\server\drum-brain-server.py" />
+    <Compile Include="util\drum-brain\web\drum-brain-web.py" />
     <Compile Include="util\hans-server-log-reader.py" />
+    <Compile Include="util\theremin.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="doc\" />
@@ -66,6 +70,11 @@
     <Folder Include="src\web\static\" />
     <Folder Include="src\web\templates\" />
     <Folder Include="util\" />
+    <Folder Include="util\drum-brain\" />
+    <Folder Include="util\drum-brain\server\" />
+    <Folder Include="util\drum-brain\web\" />
+    <Folder Include="util\drum-brain\web\static\" />
+    <Folder Include="util\drum-brain\web\templates\" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
