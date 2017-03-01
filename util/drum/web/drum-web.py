@@ -30,10 +30,16 @@ def index():
             msg = data['id']
             if(data['value'] != "undefined"):
                 msg += "." + data['value']
-            if(msg == "start"):
-                os.system("python2 /home/alarm/HANS/util/drum-brain/server/drum-brain-server.py -m 3 &")
-            elif(msg == "exit"):
-                os.system("sudo  pkill -f drum-brain-server.py")
+            if(msg == "StartServer"):
+                os.system("python2 /home/alarm/HANS/util/drum/server/drum-server.py -m 3 &")
+            elif(msg == "KillServer"):
+                os.system("sudo  pkill -f drum-server.py")
+            elif(msg == "StartJacktrip"):
+                os.system("/home/alarm/start_jacktrip.sh")
+            elif(msg == "ConnectJacktrip"):
+                os.system("/home/alarm/connect_jackports.sh")
+            elif(msg == "StartNetmidi"):
+                os.system("/home/alarm/start_netmidi.sh")
             elif(msg == "reboot"):
                 os.system('sudo reboot')
             elif(msg == "poweroff"):

@@ -258,9 +258,6 @@ class Modulator:
 class NetConHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         command = self.request[0].strip()
-        # todo: choose command format (maybe JSON?)
-        #       and implement commands.
-        #       some ugly examples:
         if command.startswith("DK"): # extra drumkit selector for midi input
             sampleplayer.set_kit(command)
         elif command.startswith("es"): # effect chain switch
@@ -278,11 +275,6 @@ class NetConHandler(SocketServer.BaseRequestHandler):
                 modulator.set_input(0)
             elif command.split('.')[1] == 'off':
                 modulator.set_input(1)
-        elif command == 'test': # test system with sample sound
-            test() #todo
-        elif command == 'exit':
-            # quite destructive. should be confirmed before issuing
-            os.system('sudo poweroff')
 
 
 class ConnectionManager():

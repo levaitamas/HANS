@@ -12,10 +12,11 @@
 <h1>Drum Web Control</h1>
 <hr>
 <form method="post">
-    <button type="button" id="start" onclick="onClick(this.id);">Start</button>
-    <button type="button" id="exit" onclick="onClick(this.id);">Exit</button>
-    <button type="button" id="reboot" onclick="onClick(this.id);">Reboot</button>
-    <button type="button" id="poweroff" onclick="onClick(this.id);">Power Off</button>
+    <button type="button" id="StartServer" onclick="onClick(this.id);">Start Server</button>
+    <button type="button" id="KillServer" onclick="onClick(this.id);">Kill Server</button>
+    <button type="button" id="StartJacktrip" onclick="onClick(this.id);">Start JackTrip</button>
+    <button type="button" id="ConnectJacktrip" onclick="onClick(this.id);">Connect JackTrip</button>
+    <button type="button" id="StartNetmidi" onclick="onClick(this.id);">Start NetMidi</button>
 </form>
 <hr>
 <p>Select Input</p>
@@ -79,6 +80,11 @@
         <div class="slider round"></div>
     </label>
     <input type="range" id="ec.Reverb-param" value="num" min="0" max="100" onchange="chValue(this.id, this.value);" disabled="disabled" />
+</form>
+<hr>
+<form method="post">
+    <button type="button" id="reboot" onclick="onClick(this.id);">Reboot</button>
+    <button type="button" id="poweroff" onclick="onClick(this.id);">Power Off</button>
 </form>
 <hr>
 </body>
