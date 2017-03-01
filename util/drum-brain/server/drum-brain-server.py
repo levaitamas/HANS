@@ -232,9 +232,9 @@ class Modulator:
             self.selector_chorus.setVoice(0)
         if self.effectchain['Reverb']:
             self.reverb.setSize(self.effectchain['Reverb-param']*0.01)
-            self.selector_reverb.setVoice(1)
+            self.output.setVoice(1)
         else:
-            self.selector_reverb.setVoice(0)
+            self.output.setVoice(0)
         if self.effectchain['Volume']:
             self.output.setMul(self.effectchain['Volume-param']*0.011)
         else:
