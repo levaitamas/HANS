@@ -39,7 +39,6 @@ def index():
             elif(msg == "poweroff"):
                 os.system('sudo poweroff')
             else:
-                print(msg)
                 sndStr(msg)
     return render_template('drumweb.html')
 
