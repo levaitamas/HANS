@@ -95,7 +95,6 @@ class MidiProc:
 def handle_midievent(status, note, velocity):
     low = 62
     high = 94
-    print(str(status) + str(note))
     # filter note-on messages
     if 144 <= status <= 159:
         # filter kick drum
@@ -203,7 +202,8 @@ class Modulator:
 
     def set_player(self, player_out):
         self.player = player_out
-        self.selector_input.setInputs([pyo.Input(), self.player])
+        self.selector_input.setInput(pyo.Input())
+	self.selector_input.setInput2(self.player)
 
     def execute(self):
         if self.effectchain['Compressor']:
@@ -247,7 +247,6 @@ class Modulator:
             self.execute()
 
     def set_input(self, value):
-        print(str(self.selector_input.interp))
         if value == 1:
             self.input_id = 0
             self.selector_input.interp = 0
@@ -276,9 +275,9 @@ class NetConHandler(SocketServer.BaseRequestHandler):
             modulator.set_effect_param(effect_name, value)
         elif command.startswith("ds"): # drum input select -- midi or line in
             if command.split('.')[1] == 'on':
-                modulator.set_input(1)
-            elif command.split('.')[1] == 'off':
                 modulator.set_input(0)
+            elif command.split('.')[1] == 'off':
+                modulator.set_input(1)
         elif command == 'test': # test system with sample sound
             test() #todo
         elif command == 'exit':
