@@ -171,38 +171,33 @@ class Modulator:
 
         self.player = pyo.TableRead(pyo.NewTable(1), loop=False)
         self.denorm_noise = pyo.Noise(1e-24)
-        self.selector_input = pyo.Selector(
-            inputs=[pyo.Input(), self.player])
+        self.selector_input = pyo.Interp(pyo.Input(), self.player, interp=0)
 
         self.compressor = pyo.Compress(self.selector_input,
                                        ratio=self.effectchain['Compressor-param'],
                                        thresh=-36,
                                        falltime=0.18)
-        self.selector_comp = pyo.Selector(
-            inputs=[self.selector_input, self.compressor])
+        self.selector_comp = pyo.Interp(self.selector_input, self.compressor, interp=0)
 
         self.distortion = pyo.Disto(self.selector_comp,
                                     drive=self.effectchain['Distortion-param'],
                                     slope=0.7)
-        self.selector_disto = pyo.Selector(
-            inputs=[self.selector_comp, self.distortion])
+        self.selector_disto = pyo.Interp(self.selector_comp, self.distortion, interp=0)
 
         self.freqshift = pyo.FreqShift(self.selector_disto + self.denorm_noise,
                                        shift=self.effectchain['FreqShift-param'])
-        self.selector_freqshift = pyo.Selector(
-            inputs=[self.selector_disto, self.freqshift])
+        self.selector_freqshift = pyo.Interp(self.selector_disto, self.freqshift, interp=0)
 
         self.chorus = pyo.Chorus(self.selector_freqshift + self.denorm_noise,
                                  depth=self.effectchain['Chorus-param'],
                                  bal=0.6)
-        self.selector_chorus = pyo.Selector(
-            inputs=[self.selector_freqshift, self.chorus])
+        self.selector_chorus = pyo.Interp(self.selector_freqshift, self.chorus, interp=0)
 
         self.reverb = pyo.Freeverb(self.selector_chorus + self.denorm_noise,
                                    size=self.effectchain['Reverb-param'],
                                    bal=0.7)
-        self.output = pyo.Selector(inputs=[self.selector_chorus, self.reverb])
-        self.output = self.output.mix(2)
+        self.selector_reverb = pyo.Interp(self.selector_chorus, self.reverb, interp=0)
+        self.output = self.selector_reverb.mix(2)
         self.output.out()
 
     def set_player(self, player_out):
@@ -212,33 +207,33 @@ class Modulator:
     def execute(self):
         if self.effectchain['Compressor']:
             self.compressor.setRatio(self.effectchain['Compressor-param']*0.1)
-            self.selector_comp.setVoice(1)
+            self.selector_comp.interp = 1
         else:
-            self.selector_comp.setVoice(0)
+            self.selector_comp.interp = 0
         if self.effectchain['Distortion']:
             self.distortion.setDrive(self.effectchain['Distortion-param']*0.01)
-            self.selector_disto.setVoice(1)
+            self.selector_disto.interp = 1
         else:
-            self.selector_disto.setVoice(0)
+            self.selector_disto.interp = 0
         if self.effectchain['FreqShift']:
             self.freqshift.setShift(self.effectchain['FreqShift-param']*10)
-            self.selector_freqshift.setVoice(1)
+            self.selector_freqshift.interp = 1
         else:
-            self.selector_freqshift.setVoice(0)
+            self.selector_freqshift.interp = 0
         if self.effectchain['Chorus']:
             self.chorus.setDepth(self.effectchain['Chorus-param']*0.05)
-            self.selector_chorus.setVoice(1)
+            self.selector_chorus.interp = 1
         else:
-            self.selector_chorus.setVoice(0)
+            self.selector_chorus.interp = 0
         if self.effectchain['Reverb']:
             self.reverb.setSize(self.effectchain['Reverb-param']*0.01)
-            self.output.setVoice(1)
+            self.selector_reverb.interp = 1
         else:
-            self.output.setVoice(0)
+            self.selector_reverb.interp = 0
         if self.effectchain['Volume']:
-            self.output.setMul(self.effectchain['Volume-param']*0.011)
+            self.selector_reverb.setMul(self.effectchain['Volume-param']*0.011)
         else:
-            self.output.setMul(1)
+            self.selector_reverb.setMul(1)
 
     def toggle_effect(self, name, state):
         if name in self.effectchain:
@@ -252,11 +247,11 @@ class Modulator:
 
     def set_input(self, value):
         if value == 1:
-            self.input_id = 1
-            self.selector_input.setVoice(1)
+            self.input_id = 0
+            self.selector_input.interp = 0
         elif value == 0:
             self.input_id = 1
-            self.selector_input.setVoice(1)
+            self.selector_input.interp = 1
 
     def toggle_input(self):
         if self.input_id:
@@ -274,7 +269,7 @@ class NetConHandler(SocketServer.BaseRequestHandler):
         if command.startswith("DK"): # extra drumkit selector for midi input
             sampleplayer.set_kit(command)
         elif command.startswith("es"): # effect chain switch
-            effect_name = command.split('.')[1] 
+            effect_name = command.split('.')[1]
             if command.split('.')[2] == 'on':
                 modulator.toggle_effect(effect_name, True)
             elif command.split('.')[2] == 'off':
