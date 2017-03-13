@@ -10,10 +10,13 @@
 </head>
 <body style="max-width:400px">
     <h1>Welcome zu HANS!</h1>
+    <hr>
     <h2>Hello {{ip}}</h2> 
-    <form action="/hanssolo" method="post">
-        <button type="submit" name="hanssolo">HansSolo</button>
+    <hr>
+    <form method="get">
+        <button type="button" id="hanssolo" onclick="onClick(this.id);">HansSolo</button>
     </form>
+    <hr>
     <p id="reply">{{reply}}</p>
 </body>
 </html>

@@ -1,6 +1,6 @@
 ﻿body {
     background: black;
-    color: greenyellow;
+    color: #00cc00;
     font-family: Arial, Helvetica, sans-serif;
     font-size: 22px;
 	text-align: center;
@@ -11,9 +11,24 @@ p{
 }
 
 button{
-    background: darkgrey;
-    color: greenyellow;
+    background: #00cc00;
+    color: black;
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 22px;
-	text-align: center;
+    font-size: 44px;
+	text-align: center;	
+    border-radius: 34px;
+}
+
+button:disabled{
+    background: #ccc;
+}
+
+
+hr{
+    display: block;
+    height: 1px;
+    border: 0;
+    border-top: 3px solid #00CC00;
+    margin: 1em 0;
+    padding: 0; 
 }

@@ -16,12 +16,15 @@ app = Flask(__name__)
 hans_addr = ''
 hans_port = 0
 
+# use socket.socket to send data
+def sndStr(msg):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(msg, (hans_addr, hans_port))
 
 def clickCount():
     clickCount.clicks += 1
     if(clickCount.clicks == clickCount.limit):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto('solo', (hans_addr, hans_port))
+        sndStr('solo')
         logging.info('SOLO sent')
         clickCount.clicks = 0
         if random.random() < 0.8:
@@ -33,20 +36,25 @@ clickCount.limit = 4
 
 @app.route('/', methods=['POST', 'GET'])
 def index():
-    msg = request.args.get('reply')
-    if msg is None:
-        msg = ""
     client = request.remote_addr
+    if request.method == 'POST':
+        data = request.form
+        if data is None:
+            print("Error")
+        else:
+            msg = data['id']
+            if(data['value'] != "undefined"):
+                msg += "." + data['value']
+            if(msg == "hanssolo"):
+                logging.info('HANSSOLO clicked')
+                clickCount()
+            else:
+                sndStr(msg)
+    elif request.method == 'GET':
+        msg = request.args.get('reply')
+        if msg is None:
+            msg = "Please press the button above!"
     return render_template('index.html', ip=client, reply=msg)
-
-
-@app.route('/hanssolo', methods=['POST'])
-def hanssolo():
-    # hs = request.form['hanssolo']
-    logging.info('HANSSOLO clicked')
-    clickCount()
-    msg = "Wait for the magic!"
-    return redirect(url_for('index', reply=msg))
 
 
 if __name__ == '__main__':
