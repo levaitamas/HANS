@@ -16,6 +16,7 @@ import fnmatch
 import logging
 import os
 import sys
+import signal
 import random
 import threading
 import time
@@ -429,6 +430,15 @@ class ConnectionManager():
                                              NetConHandler)
 
 
+def hansstopit(signum, frame):
+    server.deactivateMidi()
+    time.sleep(0.2)
+    server.stop()
+    conmanager.server.server_close()
+    print(' ')
+    sys.exit(0)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='HANS Server')
@@ -485,6 +495,8 @@ if __name__ == "__main__":
     modulator = Modulator(chooser, sigproc)
     conmanager = ConnectionManager(args.host, args.port)
     midiproc = MidiProc()
+
+    signal.signal(signal.SIGINT, hansstopit)
 
     logging.info('\'HANS-SERVER started\'')
 
