@@ -500,4 +500,4 @@ if __name__ == "__main__":
 
     logging.info('\'HANS-SERVER started\'')
 
-    conmanager.server.serve_forever()
+    conmanager.server.serve_forever(1)
