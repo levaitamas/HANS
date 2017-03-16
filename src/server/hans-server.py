@@ -467,9 +467,9 @@ if __name__ == "__main__":
                           "to version 0.7.6 or later.")
 
     if sys.platform.startswith("win"):
-        server = pyo.Server(duplex=1)
+        server = pyo.Server(duplex=1, ichnls=1)
     else:
-        server = pyo.Server(duplex=1, audio='jack', jackname='HANS')
+        server = pyo.Server(duplex=1, audio='jack', jackname='HANS', ichnls=1)
 
     if args.verbose:
         # server.setVerbosity(8)
