@@ -31,15 +31,15 @@ def index():
             if(data['value'] != "undefined"):
                 msg += "." + data['value']
             if(msg == "StartServer"):
-                os.system("python2 /home/alarm/HANS/util/drum/server/drum-server.py -m 3 &")
+                os.system("screen -d -m -S DRUMSERVER bash /home/alarm/start_drumserver.sh")
             elif(msg == "KillServer"):
-                os.system("sudo  pkill -f drum-server.py")
+                os.system("screen -S DRUMSERVER -X quit")
             elif(msg == "StartJacktrip"):
-                os.system("/home/alarm/start_jacktrip.sh")
+                os.system("screen -d -m -S JACKTRIP bash /home/alarm/start_jacktrip.sh")
             elif(msg == "ConnectJacktrip"):
-                os.system("/home/alarm/connect_jackports.sh")
+                os.system("screen -d -m -S JACKCON bash /home/alarm/connect_jackports.sh")
             elif(msg == "StartNetmidi"):
-                os.system("/home/alarm/start_netmidi.sh")
+                os.system("screen -d -m -S  NETMIDI bash /home/alarm/start_netmidi.sh")
             elif(msg == "reboot"):
                 os.system('sudo reboot')
             elif(msg == "poweroff"):
