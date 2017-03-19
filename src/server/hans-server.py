@@ -42,6 +42,64 @@ class Sample:
             % (self.path.split(os.sep)[-1], self.category)
 
 
+class Chooser:
+    def __init__(self, seed_gen, sigproc,
+                 sample_root='.', enable_ai=True):
+        self.sigproc = sigproc
+        self.seedgen = seed_gen
+        self.sample_root = sample_root
+        self.samples =  { 'Human': [], 'Machine': [], 'Music': [],
+                          'Nature': [], 'Beep': [], 'Other': []}
+        self.num_of_samples = 0
+        self.enable_ai = enable_ai
+        self.output = None
+        self.set_sample_root(sample_root)
+
+    def execute(self):
+        self.seedgen.execute()
+        categories = []
+        if self.enable_ai:
+            for category in self.sigproc.output2:
+                if self.sigproc.output2[category]:
+                    categories.append(category)
+            if categories:
+                cat = random.choice(categories)
+                self.output = self.samples[cat][
+                            (self.seedgen.output % len(self.samples[cat])-1)+1]
+            else:
+                self.output = None
+        else:
+            self.output = self.samples[
+                random.choice(self.samples)][
+                    (self.seedgen.output % self.num_of_samples)+1]
+        logging.info(str(self.output) or "{'Path': null, 'Category': null}")
+
+    def calc_num_of_samples(self):
+        new_num_of_samples = 0
+        for cat, samples in self.samples.iteritems():
+            new_num_of_samples += len(samples)
+        self.num_of_samples = new_num_of_samples
+        if self.num_of_samples < 1:
+            raise Exception("No samples are available!")
+
+    def set_sample_root(self, path):
+        self.samples =  { 'Human': [], 'Machine': [], 'Music': [],
+                          'Nature': [], 'Beep': [], 'Other': []}
+        if os.path.isdir(path):
+            self.sample_root = path
+            self.load_samples(path)
+
+    def load_samples(self, folder):
+        for root, dirnames, filenames in os.walk(folder):
+            for filename in fnmatch.filter(filenames, '*.aiff'):
+                path = os.path.join(root, filename)
+                self.samples[os.path.basename(root)].append(Sample(path))
+        self.calc_num_of_samples()
+
+    def toggle_ai(self, state):
+        self.enable_ai = state
+
+
 class SigProc:
     class Rule:
         def __init__(self, active, inactive, weight):
@@ -55,7 +113,7 @@ class SigProc:
                    "'Weight': '%s'}" \
                    % (self.active, self.inactive, self.weight)
 
-    def __init__(self, audioin):
+    def __init__(self, audioin, modulator=None):
         self.yin = pyo.Yin(audioin)
         self.cen = pyo.Centroid(audioin)
         self.rms = pyo.Follower(audioin)
@@ -72,6 +130,20 @@ class SigProc:
         self.set_inputlist()
         self.set_outputlist()
         self.set_rules()
+        self._terminate = False
+        self.modulator = None
+        if modulator:
+            self.set_modulator(modulator)
+
+    def set_modulator(self, modulator):
+        self.modulator = modulator
+        threading.Thread(target=self.run).start()
+
+    def run(self):
+        while not self._terminate:
+            self.execute()
+            time.sleep(0.5)
+            self.modulator.set_effects(self.output)
 
     def execute(self):
         self.set_inputlist()
@@ -228,63 +300,6 @@ class SigProc:
             return 0
 
 
-class Chooser:
-    def __init__(self, seed_gen, sigproc,
-                 sample_root='.', enable_ai=True):
-        self.sigproc = sigproc
-        self.seedgen = seed_gen
-        self.sample_root = sample_root
-        self.samples =  { 'Human': [], 'Machine': [], 'Music': [],
-                          'Nature': [], 'Beep': [], 'Other': []}
-        self.num_of_samples = 0
-        self.enable_ai = enable_ai
-        self.output = None
-        self.set_sample_root(sample_root)
-        self.execute()
-
-    def execute(self):
-        self.seedgen.execute()
-        categories = []
-        if self.enable_ai:
-            for category in self.sigproc.output2:
-                if self.sigproc.output2[category]:
-                    categories.append(category)
-            if categories:
-                cat = random.choice(categories)
-                self.output = self.samples[cat][
-                            (self.seedgen.output % len(self.samples[cat])-1)+1]
-            else:
-                self.output = None
-        else:
-            self.output = self.samples[
-                random.choice(self.samples)][
-                    (self.seedgen.output % self.num_of_samples)+1]
-        logging.info(str(self.output) or "{'Path': null, 'Category': null}")
-
-    def calc_num_of_samples(self):
-        new_num_of_samples = 0
-        for cat, samples in self.samples.iteritems():
-            new_num_of_samples += len(samples)
-        self.num_of_samples = new_num_of_samples
-
-    def set_sample_root(self, path):
-        self.samples =  { 'Human': [], 'Machine': [], 'Music': [],
-                          'Nature': [], 'Beep': [], 'Other': []}
-        if os.path.isdir(path):
-            self.sample_root = path
-            self.load_samples(path)
-
-    def load_samples(self, folder):
-        for root, dirnames, filenames in os.walk(folder):
-            for filename in fnmatch.filter(filenames, '*.aiff'):
-                path = os.path.join(root, filename)
-                self.samples[os.path.basename(root)].append(Sample(path))
-        self.calc_num_of_samples()
-
-    def toggle_ai(self, state):
-        self.enable_ai = state
-
-
 class MidiProc:
     def __init__(self):
         self.rawm = pyo.RawMidi(handle_midievent)
@@ -330,11 +345,10 @@ def doTheWookieeBoogie():
 
 
 class Modulator:
-    def __init__(self, chooser, sigproc, enable_ai=True):
+    def __init__(self, chooser, enable_ai=True):
         self.chooser = chooser
-        self.sigproc = sigproc
-        self.output = None
         self.enable_ai = enable_ai
+
         # Effect Chain:
         # 'Volume' -> 'Speed' -> 'Distortion'
         # -> 'Chorus' -> 'Reverb' -> 'Pan'
@@ -352,51 +366,61 @@ class Modulator:
                             'Chorus': False, 'Chorus-param': 0,
                             'Reverb': False, 'Reverb-param': 0}
 
-        self.player = pyo.TableRead(pyo.NewTable(1), loop=False)
+        self.player = pyo.TableRead(pyo.NewTable(0.1), loop=False)
         self.denorm_noise = pyo.Noise(1e-24)
-
+        self.distortion = pyo.Disto(self.player, slope=0.7)
+        self.sw_disto = pyo.Interp(self.player, self.distortion,
+                                   interp=0)
+        self.chorus = pyo.Chorus(self.sw_disto + self.denorm_noise,
+                                 bal=0.6)
+        self.sw_chorus = pyo.Interp(self.sw_disto, self.chorus,
+                                    interp=0)
+        self.reverb = pyo.Freeverb(self.sw_chorus + self.denorm_noise,
+                                   bal=0.7)
+        self.sw_reverb = pyo.Interp(self.sw_chorus, self.reverb,
+                                    interp=0)
+        self.output = pyo.Pan(self.sw_reverb, outs=2, spread=0.1)
+        self.output.out()
 
     def execute(self):
-        if self.enable_ai:
-            self.sigproc.execute()
-            self.effectchain = self.sigproc.output
         self.chooser.execute()
         sample = self.chooser.output
         if sample is None:
             return
-        self.player.reset()
+        self.player.stop()
         self.player.setTable(sample.audio)
         if self.effectchain['Volume']:
-            self.player.setMul(self.effectchain['Volume-param'])
+            self.player.setMul(0.001 +
+                               self.effectchain['Volume-param'])
         if self.effectchain['Speed']:
             self.player.setFreq(sample.audio_rate *
                                 self.effectchain['Speed-param'])
         else:
             self.player.setFreq(sample.audio_rate)
-        self.player.play()
         if self.effectchain['Distortion']:
-            distortion = pyo.Disto(self.player,
-                                   drive=self.effectchain['Distortion-param'],
-                                   slope=0.7)
+            self.sw_disto.interp = 1
         else:
-            distortion = self.player
+            self.sw_disto.interp = 0
         if self.effectchain['Chorus']:
-            chorus = pyo.Chorus(distortion + self.denorm_noise,
-                                depth=self.effectchain['Chorus-param'],
-                                bal=0.6)
+            self.sw_chorus.interp = 1
         else:
-            chorus = distortion + self.denorm_noise
+            self.sw_chorus.interp = 0
         if self.effectchain['Reverb']:
-            pan = pyo.Freeverb(chorus,
-                               size=self.effectchain['Reverb-param'],
-                               bal=0.7)
+            self.sw_reverb.interp = 1
         else:
-            pan = chorus
+            self.sw_reverb.interp = 0
+        self.output.setPan(random.choice([0.02, 0.25, 0.5, 0.75, 0.98]))
+        self.player.play()
 
-        self.output = pyo.Pan(pan,
-                              pan=random.choice([0.01, 0.25, 0.5, 0.75, 0.99]),
-                              spread=0.1)
-        self.output.out()
+
+    def set_effects(self, new_setup):
+        if self.enable_ai:
+            self.effectchain = new_setup
+            self.distortion.setDrive(self.effectchain['Distortion-param'])
+            self.chorus.reset()
+            self.chorus.setDepth(self.effectchain['Chorus-param'])
+            self.reverb.reset()
+            self.reverb.setSize(self.effectchain['Reverb-param'])
 
     def toggle_effect(self, name, state):
         for key in self.effectchain.keys():
@@ -431,8 +455,10 @@ class ConnectionManager():
 
 def hansstopit(signum, frame):
     server.deactivateMidi()
-    time.sleep(0.2)
+    sigproc._terminate = True
+    time.sleep(0.5)
     server.stop()
+    time.sleep(0.2)
     conmanager.server.server_close()
     print(' ')
     sys.exit(0)
@@ -491,7 +517,8 @@ if __name__ == "__main__":
     sigproc = SigProc(pyo.Input())
     seedgen = SeedGen()
     chooser = Chooser(seedgen, sigproc, sample_root=args.sampleroot)
-    modulator = Modulator(chooser, sigproc)
+    modulator = Modulator(chooser)
+    sigproc.set_modulator(modulator)
     conmanager = ConnectionManager(args.host, args.port)
     midiproc = MidiProc()
 
