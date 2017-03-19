@@ -244,34 +244,22 @@ class Chooser:
 
     def execute(self):
         self.seedgen.execute()
-        samples = []
         categories = []
         if self.enable_ai:
-            if self.num_of_samples > 0:
-                for category in self.sigproc.output2:
-                    if self.sigproc.output2[category]:
-                        categories.append(category)
-                if categories:
-                    samples = self.samples[random.choice(categories)]
-                    num_selected_samples = len(samples)
-                    if num_selected_samples > 0:
-                        self.output = samples[
-                            (self.seedgen.output % num_selected_samples)]
-                else:
-                    self.output = None
+            for category in self.sigproc.output2:
+                if self.sigproc.output2[category]:
+                    categories.append(category)
+            if categories:
+                cat = random.choice(categories)
+                self.output = self.samples[cat][
+                            (self.seedgen.output % len(self.samples[cat])-1)+1]
             else:
                 self.output = None
         else:
-            if self.num_of_samples > 0:
-                self.output = self.sample_list[
-                    (self.seedgen.output % self.num_of_samples)]
-            else:
-                self.output = None
-
-        if self.output:
-            logging.info(str(self.output))
-        else:
-            logging.info("{'Path': null, 'Category': null}")
+            self.output = self.samples[
+                random.choice(self.samples)][
+                    (self.seedgen.output % self.num_of_samples)+1]
+        logging.info(str(self.output) or "{'Path': null, 'Category': null}")
 
     def calc_num_of_samples(self):
         new_num_of_samples = 0
