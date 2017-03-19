@@ -288,11 +288,23 @@ class Chooser:
 class MidiProc:
     def __init__(self):
         self.rawm = pyo.RawMidi(handle_midievent)
+        self.counter = 0
+        self.block = False
+        self.rawm = pyo.RawMidi(handle_midievent)
+    def block_midi(self):
+        time.sleep(0.25)
+        self.block = False
 
 
 def handle_midievent(status, note, velocity):
+    if midiproc.block or midiproc.counter > 2:
+        midiproc.counter = 0
+        midiproc.block = True
+        threading.Thread(target=midiproc.block_midi).start()
+        return
     # filter note-on messages
     if 144 <= status <= 159:
+        midiproc.counter += 1
         # filter accented bass drum
         if note == 36 and velocity >= 62:
             if random.random() < 0.6:
