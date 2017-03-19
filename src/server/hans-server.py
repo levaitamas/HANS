@@ -306,23 +306,21 @@ def handle_midievent(status, note, velocity):
     # filter note-on messages
     if 144 <= status <= 159:
         # filter accented bass drum
-        if note == 36 and velocity >= 52:
+        if note == 36 and velocity >= 62:
             if random.random() < 0.6:
                 modulator.execute()
         # filter accented snare drum
-        elif note == 38 or note == 40 and velocity >= 52:
+        elif note == 38 or note == 40 and velocity >= 70:
             if random.random() < 0.3:
                 modulator.execute()
         # filter accented toms
-        elif note == 45 or note == 50 and velocity >= 76:
+        elif note == 45 or note == 50 and velocity >= 70:
             if random.random() < 0.2:
                 modulator.execute()
         # filter accented ride
-        elif note == 59 and velocity >= 64:
+        elif note == 59 and velocity >= 70:
             if random.random() < 0.1:
                 modulator.execute()
-        elif random.random() < 0.042:
-            modulator.execute()
 
 
 def doTheWookieeBoogie():
