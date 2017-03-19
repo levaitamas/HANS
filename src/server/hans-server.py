@@ -80,7 +80,7 @@ class SigProc:
             'Volume': self.toggle(self.outputlist["vol"], 0.2),
             'Volume-param': self.denorm(self.outputlist["vol"], 0.4, 1.0),
             'Speed': self.toggle(self.outputlist["spe"], 0.6),
-            'Speed-param': self.denorm(self.outputlist["spe"], 0.6, 1.4),
+            'Speed-param': self.denorm(self.outputlist["spe"], 0.4, 1.6),
             'Distortion': self.toggle(self.outputlist["dis"], 0.4),
             'Distortion-param': self.denorm(self.outputlist["dis"], 0.4, 1.0),
             'Chorus': self.toggle(self.outputlist["cho"], 0.4),
@@ -369,9 +369,10 @@ class Modulator:
         self.player.reset()
         self.player.setTable(sample.audio)
         if self.effectchain['Volume']:
-            self.player.setMul(0.001 + self.effectchain['Volume-param'])
+            self.player.setMul(self.effectchain['Volume-param'])
         if self.effectchain['Speed']:
-            self.player.setFreq(0.001 + self.effectchain['Speed-param'])
+            self.player.setFreq(sample.audio_rate *
+                                self.effectchain['Speed-param'])
         else:
             self.player.setFreq(sample.audio_rate)
         self.player.play()
