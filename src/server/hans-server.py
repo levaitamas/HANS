@@ -34,7 +34,7 @@ class Sample:
     def __init__(self, path, category=None):
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
-        self.audio = pyo.SndTable(path, chnl=1)
+        self.audio = pyo.SndTable(path)
         self.audio_rate = self.audio.getRate()
 
     def __str__(self):

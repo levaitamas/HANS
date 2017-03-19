@@ -22,7 +22,7 @@ class Sample:
         assert path
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
-        self.audio = pyo.SndTable(path, chnl=1)
+        self.audio = pyo.SndTable(path)
         self.audio_rate = self.audio.getRate()
         self.player = pyo.TableRead(table=self.audio,
                                     freq=self.audio_rate,
