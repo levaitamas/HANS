@@ -50,7 +50,7 @@ class SamplePlayer:
             if self.samples[sampleH]:
                 self.mixer.addInput(sample,
                                     self.samples[sampleH].player)
-                self.mixer.setAmp(sample, 0, 0.1)
+                self.mixer.setAmp(sample, 0, 0.25)
 
     def execute(self, pad):
         self.mixer.delInput(pad[:-1])
@@ -89,49 +89,52 @@ class SamplePlayer:
 class MidiProc:
     def __init__(self):
         self.rawm = pyo.RawMidi(handle_midievent)
+        self.midimode = False
 
 # https://static.roland.com/assets/media/pdf/HD-1_r_e2.pdf
 
 def handle_midievent(status, note, velocity):
     low = 62
     high = 94
-    # filter note-on messages
-    if 144 <= status <= 159:
-        # filter kick drum
-        if note == 36:
-            midinote2sample('kick', velocity, low, high)
-        # filter snare drum
-        elif note == 38:
-            midinote2sample('snare', velocity, low, high)
-        # filter tom hi
-        elif note == 48:
-            midinote2sample('tom1', velocity, low, high)
-        # filter tom mid
-        elif note == 45:
-            midinote2sample('tom2', velocity, low, high)
-        # filter tom low
-        elif note == 43:
-            midinote2sample('tom3', velocity, low, high)
-        # filter crash
-        elif note == 49:
-            midinote2sample('crash', velocity, low, high)
-        # filter ride
-        elif note == 51:
-            midinote2sample('ride', velocity, low, high)
-        # filter hh open
-        elif note == 46:
-            midinote2sample('hho', velocity, low, high)
-        # filter hh close
-        elif note == 42:
-            midinote2sample('hhc', velocity, low, high)
-        # filter foot closed
-        elif note == 44:
-            midinote2sample('foot', velocity, low, high)
-    #filter program change
-    elif 192 <= status <= 207:
-        sampleplayer.set_kit('DK%s' % note)
-    #filter control change
-    #elif 176 <= status <= 191 and note == 4:
+    # filter input type
+    if midiproc.midimode:
+        # filter note-on messages
+        if 144 <= status <= 159:
+            # filter kick drum
+            if note == 36:
+                midinote2sample('kick', velocity, low, high)
+            # filter snare drum
+            elif note == 38:
+                midinote2sample('snare', velocity, low, high)
+            # filter tom hi
+            elif note == 48:
+                midinote2sample('tom1', velocity, low, high)
+            # filter tom mid
+            elif note == 45:
+                midinote2sample('tom2', velocity, low, high)
+            # filter tom low
+            elif note == 43:
+                midinote2sample('tom3', velocity, low, high)
+            # filter crash
+            elif note == 49:
+                midinote2sample('crash', velocity, low, high)
+            # filter ride
+            elif note == 51:
+                midinote2sample('ride', velocity, low, high)
+            # filter hh open
+            elif note == 46:
+                midinote2sample('hho', velocity, low, high)
+            # filter hh close
+            elif note == 42:
+                midinote2sample('hhc', velocity, low, high)
+            # filter foot closed
+            elif note == 44:
+                midinote2sample('foot', velocity, low, high)
+        #filter program change
+        elif 192 <= status <= 207:
+            sampleplayer.set_kit('DK%s' % note)
+        #filter control change
+        #elif 176 <= status <= 191 and note == 4:
 
 def midinote2sample(pad, velocity, low, high):
     if velocity <= low:
@@ -203,7 +206,7 @@ class Modulator:
     def set_player(self, player_out):
         self.player = player_out
         self.selector_input.setInput(pyo.Input())
-	self.selector_input.setInput2(self.player)
+        self.selector_input.setInput2(self.player)
 
     def execute(self):
         if self.effectchain['Compressor']:
@@ -232,7 +235,7 @@ class Modulator:
         else:
             self.selector_reverb.interp = 0
         if self.effectchain['Volume']:
-            self.selector_reverb.setMul(self.effectchain['Volume-param']*0.011)
+            self.selector_reverb.setMul(self.effectchain['Volume-param']*0.013)
         else:
             self.selector_reverb.setMul(1)
 
@@ -273,8 +276,10 @@ class NetConHandler(SocketServer.BaseRequestHandler):
         elif command.startswith("ds"): # drum input select -- midi or line in
             if command.split('.')[1] == 'on':
                 modulator.set_input(0)
+                midiproc.midimode = True
             elif command.split('.')[1] == 'off':
                 modulator.set_input(1)
+                midiproc.midimode = False
 
 
 class ConnectionManager():
