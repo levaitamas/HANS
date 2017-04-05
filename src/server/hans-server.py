@@ -322,15 +322,15 @@ def handle_midievent(status, note, velocity):
         midiproc.counter += 1
         # filter accented bass drum
         if note == 36 and velocity >= 62:
-            if random.random() < 0.6:
+            if random.random() < 0.5:
                 modulator.execute()
         # filter accented snare drum
         elif note == 38 or note == 40 and velocity >= 70:
-            if random.random() < 0.3:
+            if random.random() < 0.25:
                 modulator.execute()
         # filter accented toms
         elif note == 45 or note == 50 and velocity >= 70:
-            if random.random() < 0.2:
+            if random.random() < 0.15:
                 modulator.execute()
         # filter accented ride
         elif note == 59 and velocity >= 70:
