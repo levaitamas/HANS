@@ -7,15 +7,15 @@ autonomous actor, (2) computer network as a platform for
 musician–audience interactions, and (3) computers as musical
 instruments.
 
-HANS is an autonomous [computer program](HANS/util/) that is capable
+HANS is an autonomous [computer program](src/) that is capable
 of playing together with human actors interactively. The program
 listens to musicians and via its adaptive, self-controlling artificial
 intelligence actively participates in performance by managing its
 internal sampler and effect chain.
 
 HANS involves massive softwarization of redesigning existing musical
-instruments such as the [virtual theremin](HANS/util/theremin.py) or
-the [drum module](HANS/util/drum/).
+instruments such as the [virtual theremin](util/theremin.py) or
+the [drum module](util/drum/).
 
 HANS is also a free improvising noisy experimental abstract electronic
 band with computers, electric bass zither, drums, synths and other
