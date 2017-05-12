@@ -334,19 +334,19 @@ def handle_midievent(status, note, velocity):
     if 144 <= status <= 159:
         midiproc.counter += 1
         # filter accented bass drum
-        if note == 36 and velocity >= 62:
+        if note in {35, 36} and velocity >= 64:
             if random.random() < 0.5:
                 modulator.execute()
         # filter accented snare drum
-        elif note == 38 or note == 40 and velocity >= 70:
+        elif note in {38, 40} and velocity >= 70:
             if random.random() < 0.25:
                 modulator.execute()
         # filter accented toms
-        elif note == 45 or note == 50 and velocity >= 70:
+        elif note in {41, 45, 48, 50} and velocity >= 70:
             if random.random() < 0.15:
                 modulator.execute()
-        # filter accented ride
-        elif note == 59 and velocity >= 70:
+        # filter accented cymbals
+        elif note in {49, 51, 55, 57, 59} and velocity >= 70:
             if random.random() < 0.1:
                 modulator.execute()
 
