@@ -315,14 +315,19 @@ class SigProc:
 
 
 class MidiProc:
-    def __init__(self):
-        self.rawm = pyo.RawMidi(handle_midievent)
+    def __init__(self, port=5005):
         self.counter = 0
         self.block = False
         self.rawm = pyo.RawMidi(handle_midievent)
+        self.osci=pyo.OscDataReceive(port, "/hans/midi", handle_oscmidi)
     def block_midi(self):
         time.sleep(0.25)
         self.block = False
+
+
+def handle_oscmidi(address, *args):
+    data=args[0]
+    handle_midievent(data[1], data[2], data[3])
 
 
 def handle_midievent(status, note, velocity):
@@ -488,6 +493,10 @@ if __name__ == "__main__":
                         help='HANS server port',
                         default='9999',
                         type=int)
+    parser.add_argument('-o', '--ocsport',
+                        help='HANS server OSC port',
+                        default='5005',
+                        type=int)
     parser.add_argument('-m', '--midi',
                         help='Input MIDI channel number',
                         default=None,
@@ -534,7 +543,7 @@ if __name__ == "__main__":
     modulator = Modulator(chooser)
     sigproc.set_modulator(modulator)
     conmanager = ConnectionManager(args.host, args.port)
-    midiproc = MidiProc()
+    midiproc = MidiProc(args.oscport)
 
     signal.signal(signal.SIGINT, hansstopit)
 
