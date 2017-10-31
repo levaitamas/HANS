@@ -43,7 +43,8 @@ class SeedGen:
         self.output = int(random.random() * 13579)
 
 
-class Sample:
+class Sample(object):
+    __slots__ = ['path', 'category', 'audio', 'audio_rate']
     def __init__(self, path, category=None):
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
