@@ -52,8 +52,6 @@ def index():
                 os.system("screen -d -m -S JACKTRIP bash /home/alarm/start_jacktrip.sh")
             elif(msg == "ConnectJacktrip"):
                 os.system("screen -d -m -S JACKCON bash /home/alarm/connect_jackports.sh")
-            elif(msg == "StartNetmidi"):
-                os.system("screen -d -m -S  NETMIDI bash /home/alarm/start_netmidi.sh")
             elif(msg == "reboot"):
                 os.system('sudo reboot')
             elif(msg == "poweroff"):

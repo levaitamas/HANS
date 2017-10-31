@@ -102,6 +102,8 @@ class SamplePlayer:
 class MidiProc:
     def __init__(self):
         self.rawm = pyo.RawMidi(handle_midievent)
+        self.osc_sender = pyo.OscDataSend('m', args.port, '/hans/midi', host=args.ip)
+        self.oscmode = False
         self.midimode = False
 
 # https://static.roland.com/assets/media/pdf/HD-1_r_e2.pdf
@@ -110,6 +112,8 @@ def handle_midievent(status, note, velocity):
     low = 62
     high = 94
     # filter input type
+    if midiproc.oscmode:
+        midihandler.osc_sender.send([[0, status, note, velocity]])
     if midiproc.midimode:
         # filter note-on messages
         if 144 <= status <= 159:
@@ -313,6 +317,15 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--sampleroot',
                         help='Samples root folder',
                         default='.')
+    parser.add_argument('--ip',
+                        help="OSC server's IP address",
+                        type=str, default='127.0.0.1')
+    parser.add_argument('-p', '--port',
+                        help='OSC port',
+                        type=int, default=5005)
+    parser.add_argument('-o', '--osc',
+                        help='Turn on OSC midi forward mode',
+                        action='store_true')
     parser.add_argument('-v', '--verbose',
                         help='Turn on verbose mode',
                         action='store_true')
@@ -348,7 +361,11 @@ if __name__ == "__main__":
 
     modulator = Modulator()
     sampleplayer = SamplePlayer(modulator, sample_root=args.sampleroot)
+
     midiproc = MidiProc()
+    if args.oscmode:
+        midiproc.oscmode = True
+
     conmanager = ConnectionManager()
 
     conmanager.server.serve_forever()

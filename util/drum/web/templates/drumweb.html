@@ -1,11 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 	<title>Drum Web Control</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable = no">
 	<meta charset="utf-8" />
 	<link rel="stylesheet" type="text/css" href="/static/drumstyle.css">
-    <script src="/static/drumscript.js"></script> 
+    <script src="/static/drumscript.js"></script>
 </head>
 <body>
     <h1>Drum Web Control</h1>
@@ -13,7 +13,7 @@
     <h3>Effectz</h3>
     <form method="post">
         <p>Volume</p>
-        <label class="switch">            
+        <label class="switch">
             <input type="checkbox" id="es.Volume" value="on" onclick="chCheck(this.id);">
             <div class="slider round"></div>
         </label>
@@ -55,7 +55,6 @@
         <button type="button" id="KillServer" onclick="onClick(this.id);">Kill Server</button>
         <button type="button" id="StartJacktrip" onclick="onClick(this.id);">Start JackTrip</button>
         <button type="button" id="ConnectJacktrip" onclick="onClick(this.id);">Connect JackTrip</button>
-        <button type="button" id="StartNetmidi" onclick="onClick(this.id);">Start NetMidi</button>
     </form>
     <hr>
     <form method="post">
@@ -87,4 +86,4 @@
     </div>
 <hr>
 </body>
-</html> 
+</html>
