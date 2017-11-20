@@ -118,10 +118,10 @@ def handle_midievent(status, note, velocity):
         # filter note-on messages
         if 144 <= status <= 159:
             # filter kick drum
-            if note == 36:
+            if note in {35, 36}:
                 midinote2sample('kick', velocity, low, high)
             # filter snare drum
-            elif note == 38:
+            elif note in {38, 40}:
                 midinote2sample('snare', velocity, low, high)
             # filter tom hi
             elif note == 48:
@@ -130,13 +130,13 @@ def handle_midievent(status, note, velocity):
             elif note == 45:
                 midinote2sample('tom2', velocity, low, high)
             # filter tom low
-            elif note == 43:
+            elif note in {41, 43}:
                 midinote2sample('tom3', velocity, low, high)
             # filter crash
-            elif note == 49:
+            elif note in {49, 57}:
                 midinote2sample('crash', velocity, low, high)
             # filter ride
-            elif note == 51:
+            elif note in {51, 59}:
                 midinote2sample('ride', velocity, low, high)
             # filter hh open
             elif note == 46:
@@ -252,7 +252,7 @@ class Modulator:
         else:
             self.selector_reverb.interp = 0
         if self.effectchain['Volume']:
-            self.selector_reverb.setMul(self.effectchain['Volume-param']*0.013)
+            self.selector_reverb.setMul(self.effectchain['Volume-param']*0.025)
         else:
             self.selector_reverb.setMul(1)
 
