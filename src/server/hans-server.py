@@ -491,11 +491,11 @@ if __name__ == "__main__":
                         default='0.0.0.0')
     parser.add_argument('-p', '--port',
                         help='HANS server port',
-                        default='9999',
+                        default=9999,
                         type=int)
-    parser.add_argument('-o', '--ocsport',
+    parser.add_argument('-o', '--oscport',
                         help='HANS server OSC port',
-                        default='5005',
+                        default=5005,
                         type=int)
     parser.add_argument('-m', '--midi',
                         help='Input MIDI channel number',

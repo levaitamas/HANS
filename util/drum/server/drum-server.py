@@ -100,9 +100,9 @@ class SamplePlayer:
                           'footL': None, 'footM': None, 'footH': None }
 
 class MidiProc:
-    def __init__(self):
+    def __init__(self, osc_port=5005, osc_ip='127.0.0.1'):
         self.rawm = pyo.RawMidi(handle_midievent)
-        self.osc_sender = pyo.OscDataSend('m', args.port, '/hans/midi', host=args.ip)
+        self.osc_sender = pyo.OscDataSend('m', osc_port, '/hans/midi', host=osc_ip)
         self.oscmode = False
         self.midimode = False
 
@@ -111,12 +111,11 @@ class MidiProc:
 def handle_midievent(status, note, velocity):
     low = 62
     high = 94
-    # filter input type
-    if midiproc.oscmode:
-        midihandler.osc_sender.send([[0, status, note, velocity]])
-    if midiproc.midimode:
-        # filter note-on messages
-        if 144 <= status <= 159:
+    # filter note-on messages
+    if 144 <= status <= 159:
+        if midiproc.oscmode:
+            midiproc.osc_sender.send([[0, status, note, velocity]])
+        if midiproc.midimode:
             # filter kick drum
             if note in {35, 36}:
                 midinote2sample('kick', velocity, low, high)
@@ -318,11 +317,13 @@ if __name__ == "__main__":
                         help='Samples root folder',
                         default='.')
     parser.add_argument('--ip',
-                        help="OSC server's IP address",
-                        type=str, default='127.0.0.1')
+                        help="OSC server's IP address or domain name",
+                        default='localhost',
+                        type=str)
     parser.add_argument('-p', '--port',
                         help='OSC port',
-                        type=int, default=5005)
+                        default=5005,
+                        type=int)
     parser.add_argument('-o', '--osc',
                         help='Turn on OSC midi forward mode',
                         action='store_true')
@@ -362,8 +363,8 @@ if __name__ == "__main__":
     modulator = Modulator()
     sampleplayer = SamplePlayer(modulator, sample_root=args.sampleroot)
 
-    midiproc = MidiProc()
-    if args.oscmode:
+    midiproc = MidiProc(args.port, args.ip)
+    if args.osc:
         midiproc.oscmode = True
 
     conmanager = ConnectionManager()
