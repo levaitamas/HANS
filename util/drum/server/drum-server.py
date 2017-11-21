@@ -30,9 +30,9 @@ import os
 import sys
 
 
-class Sample:
+class Sample(object):
+    __slots__ = ['path', 'category', 'audio', 'audio_rate', 'player']
     def __init__(self, path, category=None):
-        assert path
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
         self.audio = pyo.SndTable(path)
