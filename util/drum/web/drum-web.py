@@ -28,11 +28,20 @@ import os
 app = Flask(__name__)
 drum_addr = 'localhost'
 drum_port = 9998
+parent_dir = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
+drum_scripts_dir = os.path.join(parent_dir, 'scripts')
 
 # use socket.socket to send data
 def sndStr(msg):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(msg, (drum_addr, drum_port))
+
+def run_in_screen(script, screen_name):
+    params = (screen_name, drum_scripts_dir, script)
+    os.system("screen -d -m -S %s bash %s/%s" % params)
+
+def kill_screen(screen_name):
+    os.system("screen -S %s -X quit" % screen_name)
 
 @app.route('/', methods=['POST', 'GET'])
 def index():
@@ -42,19 +51,19 @@ def index():
             print("Error")
         else:
             msg = data['id']
-            if(data['value'] != "undefined"):
+            if data['value'] != "undefined":
                 msg += "." + data['value']
-            if(msg == "StartServer"):
-                os.system("screen -d -m -S DRUMSERVER bash /home/alarm/start_drumserver.sh")
-            elif(msg == "KillServer"):
-                os.system("screen -S DRUMSERVER -X quit")
-            elif(msg == "StartJacktrip"):
-                os.system("screen -d -m -S JACKTRIP bash /home/alarm/start_jacktrip.sh")
-            elif(msg == "ConnectJacktrip"):
-                os.system("screen -d -m -S JACKCON bash /home/alarm/connect_jackports.sh")
-            elif(msg == "reboot"):
+            if msg == "StartServer":
+                run_in_screen('start_drumserver.sh', 'DRUMSERVER')
+            elif msg == "KillServer":
+                kill_screen('DRUMSERVER')
+            elif msg == "StartJacktrip":
+                run_in_screen('start_jacktrip.sh', 'JACKTRIP')
+            elif msg == "ConnectJacktrip":
+                run_in_screen('connect_jackports.sh', 'JACKCON')
+            elif msg == "reboot":
                 os.system('sudo reboot')
-            elif(msg == "poweroff"):
+            elif msg == "poweroff":
                 os.system('sudo poweroff')
             else:
                 sndStr(msg)
