@@ -1,8 +1,5 @@
 #!/bin/bash
+DIR="$(dirname "${BASH_SOURCE[0]}")"
+. ${DIR}/config.sh
 
-# following line kills the web-server too
-# kill -9 $(pidof python2 /home/alarm/HANS/util/drum/server/drum-server.py)
-
-HANS_SERVER_IP=192.168.0.2
-
-python2 /home/alarm/HANS/util/drum/server/drum-server.py -m 3 -o --ip ${HANS_SERVER_IP}-s /home/alarm/HANS/util/drum/server/
+python2 ${DRUM_SERVER_DIR}/drum-server.py -m ${DRUM_MIDI_DEV_ID} --ip ${HANS_SERVER_IP} --port ${HANS_SERVER_PORT} -s ${DRUM_SAMPLE_ROOT} -o

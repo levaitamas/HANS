@@ -1,7 +1,8 @@
 #!/bin/bash
+DIR="$(dirname "${BASH_SOURCE[0]}")"
+. ${DIR}/config.sh
 
 kill -9 $(pidof jacktrip)
-
 sleep 1
 
-jacktrip -c 192.168.0.2
+jacktrip -c ${HANS_SERVER_IP}

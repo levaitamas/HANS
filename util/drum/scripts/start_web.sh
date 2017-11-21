@@ -1,5 +1,5 @@
 #!/bin/bash
+DIR="$(dirname "${BASH_SOURCE[0]}")"
+. ${DIR}/config.sh
 
-# kill -9 $(pidof python2 /home/alarm/HANS/util/drum/web/drum-web.py)
-
-python2 /home/alarm/HANS/util/drum/web/drum-web.py -t
+python2 ${DRUM_WEB_DIR}/drum-web.py -t
