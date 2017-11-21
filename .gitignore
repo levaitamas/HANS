@@ -10,6 +10,7 @@ __pycache__/
 *.aif
 *.aiff
 *[Ss]ample*/
+util/drum/server/DK*/
 
 #Artifacts
 *artifact*/
