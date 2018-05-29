@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 HANS GUI
@@ -20,34 +20,47 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import argparse
 try:
     import wx
     if str.startswith(wx.version(), '2'):
         wx.SL_VALUE_LABEL = 0
 except ImportError:
     raise SystemError("wxPython not found. Please, install it.")
-import argparse
-import socket
+try:
+    import pythonosc.udp_client
+except ImportError:
+    raise SystemError("python-osc not found. Please, install it.")
 
 
 class ConnectionManager():
-    def __init__(self, host="localhost", port=9999):
-        self.port = port
-        self.host = host
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    def __init__(self, host="localhost", port=5005):
+        self.client = pythonosc.udp_client.SimpleUDPClient(host, port)
+        self.addresses = {'solo': '/hans/cmd/solo',
+                          'samplereload': '/hans/cmd/samplereload',
+                          'kick': '/hans/midi'}
+        for param in ['amp', 'rms', 'cen', 'yin']:
+            self.addresses[param] = '/hans/ctrl/%s' % param
 
-    def send_data(self, data):
-        self.socket.sendto(data, (self.host, self.port))
+    def get_url(self, name):
+        return self.addresses[name]
+
+    def send_data(self, address, data):
+        self.client.send_message(address, data)
+
+    def send_data_with_lookup(self, target, data):
+        self.client.send_message(self.get_url(target), data)
 
 
 class HansMainFrame(wx.Frame):
     def __init__(self, con_manager, parent=None):
         self.conmanager = con_manager
+        size = (700, 500)
         wx.Frame.__init__(self,
                           parent,
                           title='HANS',
-                          size=(700, 400))
-        self.SetMinSize(wx.Size(700, 400))
+                          size=size)
+        self.SetMinSize(wx.Size(size))
         self.initUI()
         self.Centre()
         self.Show()
@@ -55,81 +68,82 @@ class HansMainFrame(wx.Frame):
     def initUI(self):
         panel = wx.Panel(self)
         panelBox = wx.BoxSizer(wx.VERTICAL)
-        panelBox.SetMinSize(wx.Size(700, 550))
+        buttonBox = wx.BoxSizer(wx.HORIZONTAL)
+        soloButton = wx.Button(panel,
+                               name='solobutton',
+                               label='HANSSOLO',
+                               size=wx.Size(300, 80))
+        kickButton = wx.Button(panel,
+                               name='kickbutton',
+                               label='KICK',
+                               size=wx.Size(100, 80))
+        reloadButton = wx.Button(panel,
+                                 name='samplereloadbutton',
+                                 label='Reload Samples',
+                                 size=wx.Size(200, 80))
+        slideStyle = wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL
+        ampslide = wx.Slider(panel, -1, 80.0, 0.0, 500.0,
+                             size=(150, -1), style=slideStyle,
+                             name='ampslider')
+        rmsslide = wx.Slider(panel, -1, 70.0, 0.0, 200.0,
+                             size=(150, -1), style=slideStyle,
+                             name='rmsslider')
+        censlide = wx.Slider(panel, -1, 6000, 0.0, 10000.0,
+                             size=(150, -1), style=slideStyle,
+                             name='censlider')
+        yinslide = wx.Slider(panel, -1, 400, 0.0, 1000.0,
+                             size=(150, -1), style=slideStyle,
+                             name='yinslider')
+        amplab = wx.StaticText(panel, -1, "AMP (peak amplitude)",
+                               size=(30, -1), style=0)
+        rmslab = wx.StaticText(panel, -1, "RMS (root-mean-square)",
+                               size=(30, -1), style=0)
+        cenlab = wx.StaticText(panel, -1, "CEN (spectral centroid)",
+                               size=(30, -1), style=0)
+        yinlab = wx.StaticText(panel, -1, "YIN (frequency)",
+                               size=(30, -1), style=0)
 
-        self.soloButton = wx.Button(panel, label='HANSSOLO',
-                                    size=wx.Size(500, 80))
-        self.soloButton.Bind(wx.EVT_BUTTON, self.enterHyperspace)
-        panelBox.Add(self.soloButton, flag=wx.EXPAND)
-        panelBox.AddSpacer(20)
+        buttonBox.AddSpacer(20)
+        for name in ['solo', 'kick', 'reload']:
+            attr = '%sButton' % name
+            buttonBox.Add(locals()[attr], flag=wx.EXPAND)
+            buttonBox.AddSpacer(20)
 
-        self.ampslide = wx.Slider(panel, -1, 80.0, 0.0, 500.0,
-                                  size=(150, -1),
-                                  name=('ampslider'),
-                                  style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
-        self.rmsslide = wx.Slider(panel, -1, 70.0, 0.0, 200.0,
-                                  size=(150, -1),
-                                  name=('rmsslider'),
-                                  style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
-        self.censlide = wx.Slider(panel, -1, 6000, 0.0, 10000.0,
-                                  size=(150, -1),
-                                  name=('censlider'),
-                                  style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
-        self.yinslide = wx.Slider(panel, -1, 400, 0.0, 1000.0,
-                                  size=(150, -1),
-                                  name=('yinslider'),
-                                  style=wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL)
-        self.Bind(wx.EVT_SLIDER, self.sliderUpdate)
+        panelBox.AddSpacer(20)
+        panelBox.Add(buttonBox)
+        panelBox.AddSpacer(20)
+        for name in ['amp', 'rms', 'cen', 'yin']:
+            for type in ['lab', 'slide']:
+                attr = '%s%s' % (name, type)
+                panelBox.Add(locals()[attr], flag=wx.EXPAND)
+            panelBox.AddSpacer(20)
 
-        self.amplab = wx.StaticText(panel, -1, "AMP",
-                                    size=(30, -1),
-                                    style=0, name=('amplab'))
-        self.rmslab = wx.StaticText(panel, -1, "RMS",
-                                    size=(30, -1),
-                                    style=0, name=('rmslab'))
-        self.cenlab = wx.StaticText(panel, -1, "CEN",
-                                    size=(30, -1),
-                                    style=0, name=('cenlab'))
-        self.yinlab = wx.StaticText(panel, -1, "YIN\tYAN",
-                                    size=(30, -1),
-                                    style=0, name=('yinlab'))
-
-        panelBox.Add(self.amplab, flag=wx.EXPAND)
-        panelBox.Add(self.ampslide, flag=wx.EXPAND)
-        panelBox.AddSpacer(20)
-        panelBox.Add(self.rmslab, flag=wx.EXPAND)
-        panelBox.Add(self.rmsslide, flag=wx.EXPAND)
-        panelBox.AddSpacer(20)
-        panelBox.Add(self.cenlab, flag=wx.EXPAND)
-        panelBox.Add(self.censlide, flag=wx.EXPAND)
-        panelBox.AddSpacer(20)
-        panelBox.Add(self.yinlab, flag=wx.EXPAND)
-        panelBox.Add(self.yinslide, flag=wx.EXPAND)
-        panelBox.AddSpacer(20)
         panel.SetSizer(panelBox)
 
-    def sliderUpdate(self, event):
-        amppos = self.ampslide.GetValue()/100.0
-        rmspos = self.rmsslide.GetValue()/100.0
-        cenpos = float(self.censlide.GetValue())
-        yinpos = float(self.yinslide.GetValue())
-        data = {'amp': amppos, 'rms': rmspos,
-                'cen': cenpos, 'yin': yinpos}
-        self.conmanager.send_data(str(data))
+        self.Bind(wx.EVT_SLIDER, self.sliderUpdate)
+        self.Bind(wx.EVT_BUTTON, self.buttonPush)
 
-    def enterHyperspace(self, e):
-        self.conmanager.send_data('solo')
+    def sliderUpdate(self, event):
+        name = event.GetEventObject().GetName().replace('slider', '')
+        value = float(event.GetEventObject().GetValue())
+        if any(True for n in ['rms', 'amp'] if n in name):
+            value = value / 100.0
+        self.conmanager.send_data_with_lookup(name, value)
+
+    def buttonPush(self, event):
+        name = event.GetEventObject().GetName().replace('button', '')
+        self.conmanager.send_data_with_lookup(name, 1)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='HANS GUI')
     parser.add_argument('-H', '--host',
-                        help='HANS server IP adddress or domain name',
+                        help='HANS server IP adddress or name',
                         default='localhost')
     parser.add_argument('-p', '--port',
                         help='HANS server port',
-                        default='9999',
+                        default=5005,
                         type=int)
     args = parser.parse_args()
     conmanager = ConnectionManager(args.host, args.port)
