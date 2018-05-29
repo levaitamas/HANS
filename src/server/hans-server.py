@@ -23,7 +23,6 @@ try:
     import pyo
 except ImportError:
     raise SystemError("Python-Pyo not found. Please, install it.")
-import SocketServer
 import argparse
 import fnmatch
 import logging
@@ -194,11 +193,8 @@ class SigProc:
             'amp': self.norm(self.amp.get(), 0, self.amplim),
         }
 
-    def set_imputlims(self, yinlim, cenlim, rmslim, amplim):
-        self.yinlim = yinlim
-        self.cenlim = cenlim
-        self.rmslim = rmslim
-        self.amplim = amplim
+    def set_inputlim(self, name, value):
+        setattr(self, '%slim' % name, value)
 
     def set_rules(self):
         self.rulelist = []
@@ -315,19 +311,31 @@ class SigProc:
 
 
 class MidiProc:
-    def __init__(self, port=5005):
+    def __init__(self):
         self.counter = 0
         self.block = False
         self.rawm = pyo.RawMidi(handle_midievent)
-        self.osci=pyo.OscDataReceive(port, "/hans/midi", handle_oscmidi)
+        self.trigger_notes = {}
+        # accented bass drum
+        for i in (35, 36):
+            self.add_trigger(i, 64, 0.5)
+        # accented snare
+        for i in (38, 40):
+            self.add_trigger(i, 70, 0.25)
+        # accented toms
+        for i in (41, 45, 48, 50):
+            self.add_trigger(i, 70, 0.15)
+        # accented cymbals
+        for i in (49, 51, 55, 57, 59):
+            self.add_trigger(i, 70, 0.1)
+
+    def add_trigger(self, note, velocity, limit):
+        self.trigger_notes[note] = {'velocity': velocity,
+                                    'limit': limit}
+
     def block_midi(self):
         time.sleep(0.25)
         self.block = False
-
-
-def handle_oscmidi(address, *args):
-    data=args[0]
-    handle_midievent(data[1], data[2], data[3])
 
 
 def handle_midievent(status, note, velocity):
@@ -339,22 +347,49 @@ def handle_midievent(status, note, velocity):
     # filter note-on messages
     if 144 <= status <= 159:
         midiproc.counter += 1
-        # filter accented bass drum
-        if note in {35, 36} and velocity >= 64:
-            if random.random() < 0.5:
-                modulator.execute()
-        # filter accented snare drum
-        elif note in {38, 40} and velocity >= 70:
-            if random.random() < 0.25:
-                modulator.execute()
-        # filter accented toms
-        elif note in {41, 45, 48, 50} and velocity >= 70:
-            if random.random() < 0.15:
-                modulator.execute()
-        # filter accented cymbals
-        elif note in {49, 51, 55, 57, 59} and velocity >= 70:
-            if random.random() < 0.1:
-                modulator.execute()
+        try:
+            if velocity > midiproc.trigger_notes[note]['velocity']:
+                if random.random() < midiproc.trigger_notes[note]['limit']:
+                    modulator.execute()
+        except KeyError:
+            pass
+
+
+class OSCProc:
+    def __init__(self, port=5005):
+        self.receiver = pyo.OscDataReceive(port, '/hans/*', handle_osc)
+
+
+def handle_osc(address, *args):
+    for type in ['midi', 'ctrl', 'cmd']:
+        if type in address:
+            globals()['handle_osc_%s' % type](address, *args)
+
+
+def handle_osc_midi(address, *args):
+    data = args[0]
+    # TODO: add midi support to pythonosc to fix the following
+    # hack required by the hans-gui
+    if data == 1:
+        midi = (145, 36, 125)
+    else:
+        midi = (data[1], data[2], data[3])
+    handle_midievent(*midi)
+
+
+def handle_osc_ctrl(address, *args):
+    param = address.split('/')[-1]
+    if param in ['amp', 'rms', 'cen', 'yin']:
+        sigproc.set_inputlim(param, args[0])
+
+
+# TODO: reload sigproc rulelist
+def handle_osc_cmd(address, *args):
+    if 'samplereload' in address:
+        chooser.set_sample_root(chooser.sample_root)
+    elif 'solo' in address:
+        threading.Thread(target=doTheWookieeBoogie).start()
+        logging.info('\'SOLO request\'')
 
 
 def doTheWookieeBoogie():
@@ -450,35 +485,12 @@ class Modulator:
         self.enable_ai = state
 
 
-class NetConHandler(SocketServer.BaseRequestHandler):
-    def handle(self):
-        data = self.request[0].strip()
-        if data == 'solo':
-            threading.Thread(target=doTheWookieeBoogie).start()
-            logging.info('\'SOLO request\'')
-        elif data == 'samplereload':
-            chooser.set_sample_root(chooser.sample_root)
-        elif data.startswith("{'amp':"):
-            limits = eval(data)
-            sigproc.set_imputlims(limits['yin'], limits['cen'],
-                                  limits['rms'], limits['amp'])
-
-
-class ConnectionManager():
-    def __init__(self, host="localhost", port=9999):
-        self.port = port
-        self.host = host
-        self.server = SocketServer.UDPServer((self.host, self.port),
-                                             NetConHandler)
-
-
 def hansstopit(signum, frame):
     server.deactivateMidi()
     sigproc._terminate = True
     time.sleep(0.5)
     server.stop()
     time.sleep(0.2)
-    conmanager.server.server_close()
     print(' ')
     sys.exit(0)
 
@@ -489,10 +501,6 @@ if __name__ == "__main__":
     parser.add_argument('-H', '--host',
                         help='HANS server IP adddress or domain name',
                         default='0.0.0.0')
-    parser.add_argument('-p', '--port',
-                        help='HANS server port',
-                        default=9999,
-                        type=int)
     parser.add_argument('-o', '--oscport',
                         help='HANS server OSC port',
                         default=5005,
@@ -542,11 +550,12 @@ if __name__ == "__main__":
     chooser = Chooser(seedgen, sigproc, sample_root=args.sampleroot)
     modulator = Modulator(chooser)
     sigproc.set_modulator(modulator)
-    conmanager = ConnectionManager(args.host, args.port)
-    midiproc = MidiProc(args.oscport)
+    oscproc = OSCProc(args.oscport)
+    midiproc = MidiProc()
 
     signal.signal(signal.SIGINT, hansstopit)
 
     logging.info('\'HANS-SERVER started\'')
 
-    conmanager.server.serve_forever(1)
+    while True:
+        time.sleep(2)
