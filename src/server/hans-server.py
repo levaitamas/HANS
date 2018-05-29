@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 HANS SERVER
@@ -27,9 +27,9 @@ import argparse
 import fnmatch
 import logging
 import os
-import sys
-import signal
 import random
+import signal
+import sys
 import threading
 import time
 
@@ -44,6 +44,7 @@ class SeedGen:
 
 class Sample(object):
     __slots__ = ['path', 'category', 'audio', 'audio_rate']
+
     def __init__(self, path, category=None):
         self.path = path
         self.category = category or os.path.basename(os.path.dirname(path))
@@ -61,8 +62,8 @@ class Chooser:
         self.sigproc = sigproc
         self.seedgen = seed_gen
         self.sample_root = sample_root
-        self.samples =  { 'Human': [], 'Machine': [], 'Music': [],
-                          'Nature': [], 'Beep': [], 'Other': []}
+        self.samples = {'Human': [], 'Machine': [], 'Music': [],
+                        'Nature': [], 'Beep': [], 'Other': []}
         self.num_of_samples = 0
         self.enable_ai = enable_ai
         self.output = None
@@ -78,7 +79,7 @@ class Chooser:
             if categories:
                 cat = random.choice(categories)
                 self.output = self.samples[cat][
-                            (self.seedgen.output % len(self.samples[cat])-1)+1]
+                    (self.seedgen.output % len(self.samples[cat])-1)+1]
             else:
                 self.output = None
         else:
@@ -89,15 +90,15 @@ class Chooser:
 
     def calc_num_of_samples(self):
         new_num_of_samples = 0
-        for cat, samples in self.samples.iteritems():
+        for cat, samples in self.samples.items():
             new_num_of_samples += len(samples)
         self.num_of_samples = new_num_of_samples
         if self.num_of_samples < 1:
             raise Exception("No samples are available!")
 
     def set_sample_root(self, path):
-        self.samples =  { 'Human': [], 'Machine': [], 'Music': [],
-                          'Nature': [], 'Beep': [], 'Other': []}
+        self.samples = {'Human': [], 'Machine': [], 'Music': [],
+                        'Nature': [], 'Beep': [], 'Other': []}
         if os.path.isdir(path):
             self.sample_root = path
             self.load_samples(path)
@@ -183,7 +184,9 @@ class SigProc:
             'Other': self.toggle(self.outputlist["Other"], 0.5),
         }
 
-        logging.info("[%s,%s,%s]" % (self.inputlist, self.output, self.output2))
+        logging.info("[%s,%s,%s]" % (self.inputlist,
+                                     self.output,
+                                     self.output2))
 
     def set_inputlist(self):
         self.inputlist = {
@@ -198,12 +201,10 @@ class SigProc:
 
     def set_rules(self):
         self.rulelist = []
-        for i in xrange(1, 3):
-            self.rulelist.append(self.Rule("vol%s" % id, "vol", 1.0/i))
-            self.rulelist.append(self.Rule("spe%s" % id, "spe", 1.0/i))
-            self.rulelist.append(self.Rule("dis%s" % id, "dis", 1.0/i))
-            self.rulelist.append(self.Rule("cho%s" % id, "cho", 1.0/i))
-            self.rulelist.append(self.Rule("rev%s" % id, "rev", 1.0/i))
+        for i in range(1, 3):
+            for cat in ['vol', 'spe', 'dis', 'cho', 'rev']:
+                self.rulelist.append(
+                    self.Rule("%s%s" % (cat, i), cat, 1.0/i))
 
         self.rulelist.append(self.Rule("yin", "spe", 2.00))
         self.rulelist.append(self.Rule("yin", "dis", 0.70))
@@ -263,17 +264,16 @@ class SigProc:
         self.outputlist["Machine"] = 0
 
     def calcout(self):
-        for output_name, output_value in self.outputlist.iteritems():
+        for output_name, output_value in self.outputlist.items():
             templist = []
             for rule in self.rulelist:
                 if output_name == rule.inactive:
-                    for name, value in self.inputlist.iteritems():
+                    for name, value in self.inputlist.items():
                         if name == rule.active:
                             templist.append((value, rule.weight))
-                    for outputold_name, outputold_value in \
-                        self.outputlist.iteritems():
-                        if outputold_name == rule.active:
-                            templist.append((outputold_value, rule.weight))
+                    for outold_name, outold_value in self.outputlist.items():
+                        if outold_name == rule.active:
+                            templist.append((outold_value, rule.weight))
             if len(templist) != 0:
                 self.outputlist[output_name] = self.calcavg(templist)
                 self.aging(output_name)
@@ -393,7 +393,7 @@ def handle_osc_cmd(address, *args):
 
 
 def doTheWookieeBoogie():
-    for _ in xrange(random.randrange(42, 65)):
+    for _ in range(random.randrange(42, 65)):
         handle_midievent(145, 36, 125)
         time.sleep(0.07 + random.random()/4)
 
@@ -466,7 +466,6 @@ class Modulator:
         self.output.setPan(random.choice([0.02, 0.25, 0.5, 0.75, 0.98]))
         self.player.play()
 
-
     def set_effects(self, new_setup):
         if self.enable_ai:
             self.effectchain = new_setup
@@ -477,7 +476,7 @@ class Modulator:
             self.reverb.setSize(self.effectchain['Reverb-param'])
 
     def toggle_effect(self, name, state):
-        for key in self.effectchain.keys():
+        for key in self.effectchain:
             if key == name:
                 self.effectchain[key] = state
 
@@ -540,7 +539,7 @@ if __name__ == "__main__":
         pyo.pm_list_devices()
         inid = -1
         while (inid > pyo.pm_count_devices()-1 and inid != 99) or inid < 0:
-            inid = input("Please select input ID [99 for all]: ")
+            inid = eval(input("Please select input ID [99 for all]: "))
             server.setMidiInputDevice(inid)
     server.boot()
     server.start()
