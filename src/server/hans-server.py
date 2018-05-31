@@ -23,10 +23,9 @@ try:
     import pyo
 except ImportError:
     raise SystemError("Python-Pyo not found. Please, install it.")
+from pathlib import Path
 import argparse
-import fnmatch
 import logging
-import os
 import random
 import signal
 import sys
@@ -46,14 +45,14 @@ class Sample(object):
     __slots__ = ['path', 'category', 'audio', 'audio_rate']
 
     def __init__(self, path, category=None):
-        self.path = path
-        self.category = category or os.path.basename(os.path.dirname(path))
-        self.audio = pyo.SndTable(path)
+        self.path = Path(path)
+        self.category = category or self.path.parent.name
+        self.audio = pyo.SndTable(str(self.path))
         self.audio_rate = self.audio.getRate()
 
     def __str__(self):
         return "{'Path': '%s', 'Category': '%s'}" \
-            % (self.path.split(os.sep)[-1], self.category)
+            % (self.path.name, self.category)
 
 
 class Chooser:
@@ -61,54 +60,47 @@ class Chooser:
                  sample_root='.', enable_ai=True):
         self.sigproc = sigproc
         self.seedgen = seed_gen
-        self.sample_root = sample_root
-        self.samples = {'Human': [], 'Machine': [], 'Music': [],
-                        'Nature': [], 'Beep': [], 'Other': []}
-        self.num_of_samples = 0
         self.enable_ai = enable_ai
-        self.output = None
+        self.reset_samples()
         self.set_sample_root(sample_root)
 
     def execute(self):
         self.seedgen.execute()
-        categories = []
         if self.enable_ai:
-            for category in self.sigproc.output2:
-                if self.sigproc.output2[category]:
-                    categories.append(category)
-            if categories:
-                cat = random.choice(categories)
-                self.output = self.samples[cat][
-                    (self.seedgen.output % len(self.samples[cat])-1)+1]
-            else:
-                self.output = None
+            categories = [c
+                          for c in self.sigproc.output2
+                          if self.sigproc.output2[c]]
         else:
-            self.output = self.samples[
-                random.choice(self.samples)][
-                    (self.seedgen.output % self.num_of_samples)+1]
+            categories = self.samples
+        try:
+            category = random.choice(categories)
+            idx = self.seedgen.output % len(self.samples[category])
+            self.output = self.samples[category][idx]
+        except:
+            self.output = None
         logging.info(str(self.output) or "{'Path': null, 'Category': null}")
 
-    def calc_num_of_samples(self):
-        new_num_of_samples = 0
-        for cat, samples in self.samples.items():
-            new_num_of_samples += len(samples)
-        self.num_of_samples = new_num_of_samples
-        if self.num_of_samples < 1:
-            raise Exception("No samples are available!")
+    def reset_samples(self):
+        self.samples = {}
+        for cat in ['Human', 'Machine', 'Music',
+                    'Nature', 'Beep', 'Other']:
+            self.samples[cat] = []
 
-    def set_sample_root(self, path):
-        self.samples = {'Human': [], 'Machine': [], 'Music': [],
-                        'Nature': [], 'Beep': [], 'Other': []}
-        if os.path.isdir(path):
-            self.sample_root = path
-            self.load_samples(path)
+    def set_sample_root(self, folder):
+        self.reset_samples()
+        if Path(folder).is_dir():
+            self.sample_root = folder
+            self.load_samples(folder)
 
     def load_samples(self, folder):
-        for root, dirnames, filenames in os.walk(folder):
-            for filename in fnmatch.filter(filenames, '*.aiff'):
-                path = os.path.join(root, filename)
-                self.samples[os.path.basename(root)].append(Sample(path))
-        self.calc_num_of_samples()
+        for sample in Path(folder).glob('**/*.aiff'):
+            self.samples[sample.parent.name].append(Sample(sample))
+        self.check_num_of_samples()
+
+    def check_num_of_samples(self):
+        num_of_samples = sum([len(s) for c, s in self.samples.items()])
+        if num_of_samples < 1:
+            raise Exception("No samples are available!")
 
     def toggle_ai(self, state):
         self.enable_ai = state
