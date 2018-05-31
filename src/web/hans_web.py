@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 HANS WEB
@@ -20,75 +20,86 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from flask import Flask, render_template, redirect, url_for, request
+from flask import Flask, render_template, request
+from pythonosc import udp_client
 import argparse
 import logging
 import random
-import socket
+
 
 app = Flask(__name__)
-hans_addr = ''
-hans_port = 0
-
-# use socket.socket to send data
-def sndStr(msg):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(msg, (hans_addr, hans_port))
-
-def clickCount():
-    clickCount.clicks += 1
-    if(clickCount.clicks == clickCount.limit):
-        sndStr('solo')
-        logging.info('SOLO sent')
-        clickCount.clicks = 0
-        if random.random() < 0.8:
-            clickCount.limit += 1
-
-clickCount.clicks = 0
-clickCount.limit = 4
 
 
 @app.route('/', methods=['POST', 'GET'])
 def index():
-    client = request.remote_addr
     if request.method == 'POST':
         data = request.form
-        if data is None:
-            print("Error")
-        else:
+        if data:
             msg = data['id']
-            if(data['value'] != "undefined"):
+            if data['value'] != 'undefined':
                 msg += "." + data['value']
-            if(msg == "hanssolo"):
+            if msg == 'hanssolo':
                 logging.info('HANSSOLO clicked')
-                clickCount()
-            else:
-                sndStr(msg)
+                count_click()
+
     elif request.method == 'GET':
-        msg = request.args.get('reply')
-        if msg is None:
-            msg = "Please press the button above!"
-    return render_template('index.html', ip=client, reply=msg)
+        warning_text = 'Please press the button above!'
+        msg = request.args.get('reply') or warning_text
+
+    return render_template('index.html', ip=request.remote_addr, reply=msg)
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='HANS Web')
-    parser.add_argument('-t', '--testing',
-                        help='Turn on testing mode',
-                        action='store_true')
-    args = parser.parse_args()
+def notify_hans(osc_addr, data):
+    global osc_client
+    osc_client.send_message(osc_addr, data)
+    logging.info('OSC message was sent %s to %s' % (data, osc_addr))
 
-    logging.basicConfig(filename='hans-web.log',
+
+def count_click():
+    global click_num
+    global click_limit
+    click_num += 1
+    if click_num >= click_limit:
+        notify_hans('/hans/cmd/solo', 1)
+        click_num = 0
+        if random.random() < 0.8:
+            click_limit += 1
+
+
+parser = argparse.ArgumentParser(description='HANS Web')
+parser.add_argument('-H', '--host',
+                    help='HANS server IP adddress or name',
+                    default='localhost')
+parser.add_argument('-p', '--port',
+                    help='HANS server port',
+                    default=5005,
+                    type=int)
+parser.add_argument('-t', '--testing',
+                    help='Turn on testing mode',
+                    action='store_true')
+parser.add_argument('-v', '--verbose',
+                    help='Turn on verbose mode',
+                    action='store_true')
+parser.add_argument('-l', '--logfile',
+                    help='Logfile to store logging info',
+                    default='hans-web.log')
+args = parser.parse_args()
+
+if args.verbose:
+    logging.basicConfig(filename=args.logfile,
                         format='%(asctime)s: %(message)s',
                         datefmt='%Y-%m-%d %I:%M:%S',
                         level=logging.INFO)
-    logging.info('HANS-WEB started')
 
-    if args.testing:
-        hans_addr = 'localhost'
-        hans_port = 9999
-        app.run(host='0.0.0.0')
-    else:
-        hans_addr = '192.168.0.3'
-        hans_port = 9999
-        app.run(host='0.0.0.0', port=80)
+click_num = 0
+click_limit = 4
+hans_addr = args.host
+hans_port = args.port
+osc_client = udp_client.SimpleUDPClient(hans_addr, hans_port)
+
+flask_args = {'host': '0.0.0.0'}
+if not args.testing:
+    flask_args['port'] = 80
+
+logging.info('HANS-WEB starts')
+app.run(**flask_args)
