@@ -38,6 +38,7 @@ class ConnectionManager():
         self.client = pythonosc.udp_client.SimpleUDPClient(host, port)
         self.addresses = {'solo': '/hans/cmd/solo',
                           'samplereload': '/hans/cmd/samplereload',
+                          'rulesreload': '/hans/cmd/rulesreload',
                           'kick': '/hans/midi'}
         for param in ['amp', 'rms', 'cen', 'yin']:
             self.addresses[param] = '/hans/ctrl/%s' % param
@@ -77,10 +78,12 @@ class HansMainFrame(wx.Frame):
                                name='kickbutton',
                                label='KICK',
                                size=wx.Size(100, 80))
-        reloadButton = wx.Button(panel,
-                                 name='samplereloadbutton',
-                                 label='Reload Samples',
-                                 size=wx.Size(200, 80))
+        samplereloadButton = wx.Button(panel,
+                                       name='samplereloadbutton',
+                                       label='Reload Samples')
+        rulesreloadButton = wx.Button(panel,
+                                      name='rulesreloadbutton',
+                                      label='Reload Rules')
         slideStyle = wx.SL_HORIZONTAL | wx.SL_VALUE_LABEL
         ampslide = wx.Slider(panel, -1, 80.0, 0.0, 500.0,
                              size=(150, -1), style=slideStyle,
@@ -104,10 +107,13 @@ class HansMainFrame(wx.Frame):
                                size=(30, -1), style=0)
 
         buttonBox.AddSpacer(20)
-        for name in ['solo', 'kick', 'reload']:
+        for name, space in [('solo', 10),
+                            ('kick', 40),
+                            ('samplereload', 10),
+                            ('rulesreload', 20)]:
             attr = '%sButton' % name
             buttonBox.Add(locals()[attr], flag=wx.EXPAND)
-            buttonBox.AddSpacer(20)
+            buttonBox.AddSpacer(space)
 
         panelBox.AddSpacer(20)
         panelBox.Add(buttonBox)
