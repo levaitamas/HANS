@@ -1,0 +1,69 @@
+# HANS RULELIST AND TOGGLE LEVEL CONFIG FILE
+
+#Each line contain a rule with the following format:
+# active | inactive : weight
+# or a toogle level with the following format:
+# category : level
+
+# Whole line and inline comments are supported.
+# Whitespaces are ignored,
+
+# RULES:
+
+yin | Speed      : 2.00
+yin | Distortion : 0.70
+yin | Chorus     : 0.95
+yin | Reverb     : 0.95
+
+cen | Volume     : 0.90
+cen | Speed      : 0.90
+cen | Distortion : 0.90
+cen | Chorus     : 0.90
+cen | Reverb     : 0.95
+
+rms | Volume     : 1.00
+rms | Distortion : 0.8
+rms | Chorus     : 0.8
+rms | Reverb     : 0.6
+
+amp | Volume     : 1.00
+amp | Speed      : 0.95
+amp | Distortion : 0.8
+amp | Chorus     : 0.70
+
+amp | Human   : 1.0
+yin | Human   : 0.7
+cen | Human   : 0.8
+
+amp | Machine : 0.8
+yin | Machine : 0.7
+
+amp | Music   : 0.7
+yin | Music   : 0.7
+cen | Music   : 0.6
+
+amp | Nature  : 0.7
+cen | Nature  : 0.85
+
+amp | Beep    : 0.7
+yin | Beep    : 1.0
+
+cen | Other   : 0.7
+amp | Other   : 0.7
+yin | Other   : 0.3
+
+
+# TOGGLE LEVELS:
+
+Human    : 0.25
+Machine  : 0.48
+Music    : 0.5
+Nature   : 0.42
+Beep     : 0.52
+Other    : 0.5
+
+Volume     : 0.2
+Speed      : 0.6
+Distortion : 0.4
+Chorus     : 0.4
+Reverb     : 0.4

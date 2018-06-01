@@ -23,10 +23,12 @@ try:
     import pyo
 except ImportError:
     raise SystemError("Python-Pyo not found. Please, install it.")
+from collections import namedtuple
 from pathlib import Path
 import argparse
 import logging
 import random
+import re
 import signal
 import sys
 import threading
@@ -107,37 +109,19 @@ class Chooser:
 
 
 class SigProc:
-    class Rule:
-        def __init__(self, active, inactive, weight):
-            self.active = active
-            self.inactive = inactive
-            self.weight = weight
+    Rule = namedtuple('Rule', ['active', 'inactive', 'weight'])
+    Analyser = namedtuple('Analyser', ['module', 'limit'])
+    sample_categories = ['Human', 'Machine', 'Music',
+                         'Nature', 'Beep', 'Other']
+    effect_types = ['Volume', 'Speed', 'Distortion', 'Chorus', 'Reverb']
 
-        def __str__(self):
-            return "{'Active': '%s'," \
-                   "'Inactive': '%s'," \
-                   "'Weight': '%s'}" \
-                   % (self.active, self.inactive, self.weight)
-
-    def __init__(self, audioin, modulator=None):
-        self.yin = pyo.Yin(audioin)
-        self.cen = pyo.Centroid(audioin)
-        self.rms = pyo.Follower(audioin)
-        self.amp = pyo.PeakAmp(audioin)
-        self.yinlim = 400
-        self.cenlim = 6000
-        self.rmslim = 0.6
-        self.amplim = 0.8
-        self.inputlist = {}
-        self.outputlist = {}
-        self.rulelist = []
-        self.output = {}
-        self.output2 = {}
+    def __init__(self, audioin, rules_file, modulator=None):
+        self.set_rules_toggle_levels(rules_file)
+        self.init_analysers(audioin)
         self.set_inputlist()
-        self.set_outputlist()
-        self.set_rules()
+        self.init_outputlist()
+        self.update_interval = 0.5
         self._terminate = False
-        self.modulator = None
         if modulator:
             self.set_modulator(modulator)
 
@@ -145,133 +129,100 @@ class SigProc:
         self.modulator = modulator
         threading.Thread(target=self.run).start()
 
+    def init_analysers(self, audioin):
+        self.analysers = {'yin': self.Analyser(pyo.Yin(audioin), 400),
+                          'cen': self.Analyser(pyo.Centroid(audioin), 6000),
+                          'rms': self.Analyser(pyo.Follower(audioin), 0.6),
+                          'amp': self.Analyser(pyo.PeakAmp(audioin), 0.8)}
+
     def run(self):
         while not self._terminate:
             self.execute()
-            time.sleep(0.5)
+            time.sleep(self.update_interval)
             self.modulator.set_effects(self.output)
 
     def execute(self):
         self.set_inputlist()
         self.calcout()
         self.output = {
-            'Volume': self.toggle(self.outputlist["vol"], 0.2),
-            'Volume-param': self.denorm(self.outputlist["vol"], 0.4, 1.0),
-            'Speed': self.toggle(self.outputlist["spe"], 0.6),
-            'Speed-param': self.denorm(self.outputlist["spe"], 0.4, 1.6),
-            'Distortion': self.toggle(self.outputlist["dis"], 0.4),
-            'Distortion-param': self.denorm(self.outputlist["dis"], 0.4, 1.0),
-            'Chorus': self.toggle(self.outputlist["cho"], 0.4),
-            'Chorus-param': self.denorm(self.outputlist["cho"], 1.0, 4.0),
-            'Reverb': self.toggle(self.outputlist["rev"], 0.4),
-            'Reverb-param': self.denorm(self.outputlist["rev"], 0.0, 0.6),
+            'Volume-param': self.denorm(self.outputlist['Volume'], 0.4, 1.0),
+            'Speed-param': self.denorm(self.outputlist['Speed'], 0.4, 1.6),
+            'Distortion-param': self.denorm(self.outputlist['Distortion'], 0.4, 1.0),
+            'Chorus-param': self.denorm(self.outputlist['Chorus'], 1.0, 4.0),
+            'Reverb-param': self.denorm(self.outputlist['Reverb'], 0.0, 0.6),
         }
-
-        self.output2 = {
-            'Human': self.toggle(self.outputlist["Human"], 0.25),
-            'Machine': self.toggle(self.outputlist["Machine"], 0.48),
-            'Music': self.toggle(self.outputlist["Music"], 0.5),
-            'Nature': self.toggle(self.outputlist["Nature"], 0.42),
-            'Beep': self.toggle(self.outputlist["Beep"], 0.52),
-            'Other': self.toggle(self.outputlist["Other"], 0.5),
-        }
-
+        self.output.update({cat: self.toggle(self.outputlist[cat],
+                                             self.toggle_levels[cat])
+                            for cat in self.effect_types})
+        self.output2 = {cat: self.toggle(self.outputlist[cat],
+                                         self.toggle_levels[cat])
+                        for cat in self.sample_categories}
         logging.info("[%s,%s,%s]" % (self.inputlist,
                                      self.output,
                                      self.output2))
 
     def set_inputlist(self):
-        self.inputlist = {
-            'yin': self.norm(self.yin.get(), 0, self.yinlim),
-            'cen': self.norm(self.cen.get(), 0, self.cenlim),
-            'rms': self.norm(self.rms.get(), 0, self.rmslim),
-            'amp': self.norm(self.amp.get(), 0, self.amplim),
-        }
+        self.inputlist = {m: self.norm(self.analysers[m].module.get(),
+                                       0, self.analysers[m].limit)
+                          for m in self.analysers}
 
     def set_inputlim(self, name, value):
         setattr(self, '%slim' % name, value)
 
-    def set_rules(self):
-        self.rulelist = []
-        for i in range(1, 3):
-            for cat in ['vol', 'spe', 'dis', 'cho', 'rev']:
-                self.rulelist.append(
-                    self.Rule("%s%s" % (cat, i), cat, 1.0/i))
+    def set_rules_toggle_levels(self, rules_file=None):
+        if rules_file:
+            self.rules_file = rules_file
+        self.rulelist = [self.Rule("%s%s" % (cat, i), cat, 1/i)
+                         for cat in self.effect_types
+                         for i in range(1, 3)]
+        self.load_rules(self.rules_file)
+        self.toggle_levels = {}
+        self.load_toggle_levels(self.rules_file)
 
-        self.rulelist.append(self.Rule("yin", "spe", 2.00))
-        self.rulelist.append(self.Rule("yin", "dis", 0.70))
-        self.rulelist.append(self.Rule("yin", "cho", 0.95))
-        self.rulelist.append(self.Rule("yin", "rev", 0.95))
+    def load_rules(self, rules_file):
+        # active | inactive : weight
+        regex = "^\s*(\w+)\s*\|\s*(\w+)\s*\:\s*([-+]?\d*\.\d+|\d)"
+        pattern = re.compile(regex)
+        with open(rules_file) as rfile:
+            for line in rfile:
+                caps = re.findall(pattern, line)
+                for cap in caps:
+                    new_rule = self.Rule(cap[0], cap[1], float(cap[2]))
+                    self.rulelist.append(new_rule)
 
-        self.rulelist.append(self.Rule("cen", "vol", 0.90))
-        self.rulelist.append(self.Rule("cen", "spe", 0.90))
-        self.rulelist.append(self.Rule("cen", "dis", 0.90))
-        self.rulelist.append(self.Rule("cen", "cho", 0.90))
-        self.rulelist.append(self.Rule("cen", "rev", 0.95))
+    def load_toggle_levels(self, rules_file):
+        # category : weight
+        regex = "^\s*(\w+)\s*\:\s*([-+]?\d*\.\d+|\d)"
+        pattern = re.compile(regex)
+        with open(rules_file) as rfile:
+            for line in rfile:
+                caps = re.findall(pattern, line)
+                for cap in caps:
+                    self.toggle_levels[cap[0]] = float(cap[1])
 
-        self.rulelist.append(self.Rule("rms", "vol", 1.00))
-        self.rulelist.append(self.Rule("rms", "dis", 0.8))
-        self.rulelist.append(self.Rule("rms", "cho", 0.8))
-        self.rulelist.append(self.Rule("rms", "rev", 0.6))
-
-        self.rulelist.append(self.Rule("amp", "vol", 1.00))
-        self.rulelist.append(self.Rule("amp", "spe", 0.95))
-        self.rulelist.append(self.Rule("amp", "dis", 0.8))
-        self.rulelist.append(self.Rule("amp", "cho", 0.70))
-
-        self.rulelist.append(self.Rule("amp", "Human", 1.0))
-        self.rulelist.append(self.Rule("yin", "Human", 0.7))
-        self.rulelist.append(self.Rule("cen", "Human", 0.8))
-
-        self.rulelist.append(self.Rule("amp", "Machine", 0.8))
-        self.rulelist.append(self.Rule("yin", "Machine", 0.7))
-
-        self.rulelist.append(self.Rule("amp", "Music", 0.7))
-        self.rulelist.append(self.Rule("yin", "Music", 0.7))
-        self.rulelist.append(self.Rule("cen", "Music", 0.6))
-
-        self.rulelist.append(self.Rule("amp", "Nature", 0.7))
-        self.rulelist.append(self.Rule("cen", "Nature", 0.85))
-
-        self.rulelist.append(self.Rule("amp", "Beep", 0.7))
-        self.rulelist.append(self.Rule("yin", "Beep", 1.0))
-
-        self.rulelist.append(self.Rule("cen", "Other", 0.7))
-        self.rulelist.append(self.Rule("amp", "Other", 0.7))
-        self.rulelist.append(self.Rule("yin", "Other", 0.3))
-
-    def set_outputlist(self):
-        self.outputlist = {}
-        for id in ['', '1', '2']:
-            self.outputlist["vol%s" % id] = 0
-            self.outputlist["spe%s" % id] = 0
-            self.outputlist["dis%s" % id] = 0
-            self.outputlist["cho%s" % id] = 0
-            self.outputlist["rev%s" % id] = 0
-        self.outputlist["Other"] = 0
-        self.outputlist["Music"] = 0
-        self.outputlist["Human"] = 0
-        self.outputlist["Nature"] = 0
-        self.outputlist["Beep"] = 0
-        self.outputlist["Machine"] = 0
+    def init_outputlist(self):
+        self.outputlist = {cat: 0 for cat in self.sample_categories}
+        self.outputlist.update({'%s%s' % (c, i): 0
+                                for c in self.effect_types
+                                for i in ['', '1', '2']})
 
     def calcout(self):
-        for output_name, output_value in self.outputlist.items():
-            templist = []
+        for output_name in self.outputlist:
+            tmplist = []
             for rule in self.rulelist:
                 if output_name == rule.inactive:
-                    for name, value in self.inputlist.items():
-                        if name == rule.active:
-                            templist.append((value, rule.weight))
-                    for outold_name, outold_value in self.outputlist.items():
-                        if outold_name == rule.active:
-                            templist.append((outold_value, rule.weight))
-            if len(templist) != 0:
-                self.outputlist[output_name] = self.calcavg(templist)
-                self.aging(output_name)
+                    tmplist += [(self.inputlist[in_name], rule.weight)
+                                for in_name in self.inputlist
+                                if in_name == rule.active]
+                    tmplist += [(self.outputlist[out_name], rule.weight)
+                                for out_name in self.outputlist
+                                if out_name == rule.active]
+            if tmplist:
+                self.outputlist[output_name] = self.calcavg(tmplist)
+                self.age(output_name)
 
     def norm(self, variable, min, max):
-        if (variable < max) and (variable > min):
+        if min < variable < max:
             return (variable - min) / (max - min)
         elif variable <= min:
             return 0
@@ -283,23 +234,25 @@ class SigProc:
             return variable * (max - min) + min
         return 0
 
+    def calcavg(self, tuplelist):
+        numerator = sum([l[0] * l[1] for l in tuplelist])
+        denominator = sum([l[1] for l in tuplelist])
+        try:
+            return numerator / denominator
+        except ZeroDivisionError:
+            return 0
+
+    def age(self, key):
+        try:
+            self.outputlist["%s2" % key] = 0.5 * self.outputlist["%s1" % key]
+            self.outputlist["%s1" % key] = self.outputlist[key]
+        except KeyError:
+            pass
+
     def toggle(self, variable, limit):
         if variable >= limit:
             return True
         return False
-
-    def aging(self, key):
-        if "%s2" % key in self.outputlist:
-            self.outputlist["%s2" % key] = 0.5 * self.outputlist[("%s2" % key)]
-            self.outputlist["%s1" % key] = self.outputlist[key]
-
-    def calcavg(self, tuplelist):
-        numerator = sum([l[0] * l[1] for l in tuplelist])
-        denominator = sum([l[1] for l in tuplelist])
-        if (denominator != 0):
-            return (float(numerator) / float(denominator))
-        else:
-            return 0
 
 
 class MidiProc:
@@ -371,14 +324,15 @@ def handle_osc_midi(address, *args):
 
 def handle_osc_ctrl(address, *args):
     param = address.split('/')[-1]
-    if param in ['amp', 'rms', 'cen', 'yin']:
+    if param in sigproc.analysers:
         sigproc.set_inputlim(param, args[0])
 
 
-# TODO: reload sigproc rulelist
 def handle_osc_cmd(address, *args):
     if 'samplereload' in address:
         chooser.set_sample_root(chooser.sample_root)
+    elif 'rulesreload' in address:
+        sigproc.set_rules_toggle_levels()
     elif 'solo' in address:
         threading.Thread(target=doTheWookieeBoogie).start()
         logging.info('\'SOLO request\'')
@@ -479,7 +433,7 @@ class Modulator:
 def hansstopit(signum, frame):
     server.deactivateMidi()
     sigproc._terminate = True
-    time.sleep(0.5)
+    time.sleep(sigproc.update_interval)
     server.stop()
     time.sleep(0.2)
     print(' ')
@@ -500,6 +454,9 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--sampleroot',
                         help='Path of samples root folder',
                         default='./samples/')
+    parser.add_argument('-r', '--rulesfile',
+                        help='File containing AI rules and toggle levels',
+                        default='hans.rules')
     parser.add_argument('-v', '--verbose',
                         help='Turn on verbose mode',
                         action='store_true')
@@ -536,7 +493,7 @@ if __name__ == "__main__":
     server.boot()
     server.start()
 
-    sigproc = SigProc(pyo.Input())
+    sigproc = SigProc(pyo.Input(), args.rulesfile)
     seedgen = SeedGen()
     chooser = Chooser(seedgen, sigproc, sample_root=args.sampleroot)
     modulator = Modulator(chooser)
