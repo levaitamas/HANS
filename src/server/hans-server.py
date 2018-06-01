@@ -506,6 +506,9 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose',
                         help='Turn on verbose mode',
                         action='store_true')
+    parser.add_argument('-l', '--logfile',
+                        help='Logfile',
+                        default='hans-server.log')
     args = parser.parse_args()
 
     if int(''.join(map(str, pyo.getVersion()))) < 76:
@@ -520,7 +523,7 @@ if __name__ == "__main__":
 
     if args.verbose:
         # server.setVerbosity(8)
-        logging.basicConfig(filename='hans-server.log',
+        logging.basicConfig(filename=args.logfile,
                             format="{'Timestamp': '%(asctime)s', 'Message': %(message)s},",
                             datefmt='%Y-%m-%d-%H-%M-%S',
                             level=logging.INFO)
