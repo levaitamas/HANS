@@ -441,8 +441,7 @@ def hansstopit(signum, frame):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description='HANS Server')
+    parser = argparse.ArgumentParser(description='HANS Server')
     parser.add_argument('-o', '--oscport',
                         help='HANS server OSC port',
                         default=5005,
@@ -467,13 +466,13 @@ if __name__ == "__main__":
 
     if int(''.join(map(str, pyo.getVersion()))) < 76:
         # RawMidi is supported only since Python-Pyo version 0.7.6
-        raise SystemError("Please, update your Python-Pyo install" +
+        raise SystemError("Please, update your Python-Pyo install "
                           "to version 0.7.6 or later.")
 
-    if sys.platform.startswith("win"):
-        server = pyo.Server(duplex=1, ichnls=1)
-    else:
-        server = pyo.Server(duplex=1, audio='jack', jackname='HANS', ichnls=1)
+    server_args = {'duplex': 1, 'ichnls': 1}
+    if not sys.platform.startswith('win'):
+        server_args.update({'audio': 'jack', 'jackname': 'HANS'})
+    server = pyo.Server(**server_args)
 
     if args.verbose:
         # server.setVerbosity(8)
@@ -483,13 +482,14 @@ if __name__ == "__main__":
                             level=logging.INFO)
 
     if args.midi:
-        server.setMidiInputDevice(args.midi)
+        midi_id = args.midi
     else:
         pyo.pm_list_devices()
-        inid = -1
-        while (inid > pyo.pm_count_devices()-1 and inid != 99) or inid < 0:
-            inid = eval(input("Please select input ID [99 for all]: "))
-            server.setMidiInputDevice(inid)
+        midi_id = -1
+        while (midi_id > pyo.pm_count_devices()-1 and midi_id != 99) or midi_id < 0:
+            midi_id = eval(input("Please select input ID [99 for all]: "))
+    server.setMidiInputDevice(midi_id)
+
     server.boot()
     server.start()
 
