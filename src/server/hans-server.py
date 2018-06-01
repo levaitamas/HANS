@@ -489,9 +489,6 @@ def hansstopit(signum, frame):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='HANS Server')
-    parser.add_argument('-H', '--host',
-                        help='HANS server IP adddress or domain name',
-                        default='0.0.0.0')
     parser.add_argument('-o', '--oscport',
                         help='HANS server OSC port',
                         default=5005,
