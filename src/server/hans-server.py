@@ -139,7 +139,8 @@ class SigProc:
         while not self._terminate:
             self.execute()
             time.sleep(self.update_interval)
-            self.modulator.set_effects(self.output)
+            if self.modulator.enable_ai:
+                self.modulator.set_effects(self.output)
 
     def execute(self):
         self.set_inputlist()
@@ -345,6 +346,9 @@ def doTheWookieeBoogie():
 
 
 class Modulator:
+    effect_types = ['Volume', 'Speed', 'Distortion', 'Chorus', 'Reverb']
+    pan_positions = [0.02, 0.25, 0.5, 0.75, 0.98]
+
     def __init__(self, chooser, enable_ai=True):
         self.chooser = chooser
         self.enable_ai = enable_ai
@@ -360,25 +364,19 @@ class Modulator:
         # 'Chorus-param': between 0 and 5
         # 'Reverb-param': between 0 and 1
 
-        self.effectchain = {'Volume': False, 'Volume-param': 0,
-                            'Speed': False, 'Speed-param': 0,
-                            'Distortion': False, 'Distortion-param': 0,
-                            'Chorus': False, 'Chorus-param': 0,
-                            'Reverb': False, 'Reverb-param': 0}
+        self.effectchain = {}
+        for e in self.effect_types:
+            self.effectchain[e] = False
+            self.effectchain['%s-param' % e] = 0
 
         self.player = pyo.TableRead(pyo.NewTable(0.1), loop=False)
-        self.denorm_noise = pyo.Noise(1e-24)
+        denorm_noise = pyo.Noise(1e-24)
         self.distortion = pyo.Disto(self.player, slope=0.7)
-        self.sw_disto = pyo.Interp(self.player, self.distortion,
-                                   interp=0)
-        self.chorus = pyo.Chorus(self.sw_disto + self.denorm_noise,
-                                 bal=0.6)
-        self.sw_chorus = pyo.Interp(self.sw_disto, self.chorus,
-                                    interp=0)
-        self.reverb = pyo.Freeverb(self.sw_chorus + self.denorm_noise,
-                                   bal=0.7)
-        self.sw_reverb = pyo.Interp(self.sw_chorus, self.reverb,
-                                    interp=0)
+        self.sw_distortion = pyo.Interp(self.player, self.distortion, interp=0)
+        self.chorus = pyo.Chorus(self.sw_distortion + denorm_noise, bal=0.6)
+        self.sw_chorus = pyo.Interp(self.sw_distortion, self.chorus, interp=0)
+        self.reverb = pyo.Freeverb(self.sw_chorus + denorm_noise, bal=0.7)
+        self.sw_reverb = pyo.Interp(self.sw_chorus, self.reverb, interp=0)
         self.output = pyo.Pan(self.sw_reverb, outs=2, spread=0.1)
         self.output.out()
 
@@ -389,42 +387,32 @@ class Modulator:
             return
         self.player.stop()
         self.player.setTable(sample.audio)
+
         if self.effectchain['Volume']:
-            self.player.setMul(0.001 +
-                               self.effectchain['Volume-param'])
-        if self.effectchain['Speed']:
-            self.player.setFreq(sample.audio_rate *
-                                self.effectchain['Speed-param'])
-        else:
-            self.player.setFreq(sample.audio_rate)
-        if self.effectchain['Distortion']:
-            self.sw_disto.interp = 1
-        else:
-            self.sw_disto.interp = 0
-        if self.effectchain['Chorus']:
-            self.sw_chorus.interp = 1
-        else:
-            self.sw_chorus.interp = 0
-        if self.effectchain['Reverb']:
-            self.sw_reverb.interp = 1
-        else:
-            self.sw_reverb.interp = 0
-        self.output.setPan(random.choice([0.02, 0.25, 0.5, 0.75, 0.98]))
+            self.player.setMul(self.effectchain['Volume-param'])
+        freq = {True: self.effectchain['Speed-param'],
+                False: 1}[self.effectchain['Speed']] * sample.audio_rate
+        self.player.setFreq(freq)
+        for effect in ['Distortion', 'Chorus', 'Reverb']:
+            sw = getattr(self, 'sw_%s' % effect.lower())
+            sw.interp = {True: 1, False: 0}[self.effectchain[effect]]
+
+        self.output.setPan(random.choice(self.pan_positions))
         self.player.play()
 
     def set_effects(self, new_setup):
-        if self.enable_ai:
-            self.effectchain = new_setup
-            self.distortion.setDrive(self.effectchain['Distortion-param'])
-            self.chorus.reset()
-            self.chorus.setDepth(self.effectchain['Chorus-param'])
-            self.reverb.reset()
-            self.reverb.setSize(self.effectchain['Reverb-param'])
+        self.effectchain = new_setup
+        self.distortion.setDrive(self.effectchain['Distortion-param'])
+        self.chorus.reset()
+        self.chorus.setDepth(self.effectchain['Chorus-param'])
+        self.reverb.reset()
+        self.reverb.setSize(self.effectchain['Reverb-param'])
 
     def toggle_effect(self, name, state):
-        for key in self.effectchain:
-            if key == name:
-                self.effectchain[key] = state
+        try:
+            self.effectchain[name] = state
+        except KeyError:
+            pass
 
     def toggle_ai(self, state):
         self.enable_ai = state
