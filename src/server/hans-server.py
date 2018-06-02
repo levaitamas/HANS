@@ -293,9 +293,9 @@ def handle_midievent(status, note, velocity):
     if 144 <= status <= 159:
         midiproc.counter += 1
         try:
-            if velocity > midiproc.trigger_notes[note]['velocity']:
-                if random.random() < midiproc.trigger_notes[note]['limit']:
-                    modulator.execute()
+            if velocity > midiproc.trigger_notes[note]['velocity'] and \
+               random.random() < midiproc.trigger_notes[note]['limit']:
+                modulator.execute()
         except KeyError:
             pass
 
