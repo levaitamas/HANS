@@ -29,13 +29,15 @@ except ImportError:
     raise SystemError("wxPython not found. Please, install it.")
 try:
     import pythonosc.udp_client
+    import pythonosc.osc_bundle_builder
+    import pythonosc.osc_message_builder
 except ImportError:
     raise SystemError("python-osc not found. Please, install it.")
 
 
 class ConnectionManager():
     def __init__(self, host="localhost", port=5005):
-        self.client = pythonosc.udp_client.SimpleUDPClient(host, port)
+        self.client = pythonosc.udp_client.UDPClient(host, port)
         self.addresses = {'solo': '/hans/cmd/solo',
                           'samplereload': '/hans/cmd/samplereload',
                           'rulesreload': '/hans/cmd/rulesreload',
@@ -46,11 +48,16 @@ class ConnectionManager():
     def get_url(self, name):
         return self.addresses[name]
 
-    def send_data(self, address, data):
-        self.client.send_message(address, data)
+    def send_message(self, address, osc_type, data):
+        bundle = pythonosc.osc_bundle_builder.OscBundleBuilder(
+            pythonosc.osc_bundle_builder.IMMEDIATELY)
+        msg = pythonosc.osc_message_builder.OscMessageBuilder(address)
+        msg.add_arg(data, osc_type)
+        bundle.add_content(msg.build())
+        self.client.send(bundle.build())
 
-    def send_data_with_lookup(self, target, data):
-        self.client.send_message(self.get_url(target), data)
+    def send_message_with_lookup(self, target, osc_type, data):
+        self.send_message(self.get_url(target), osc_type, data)
 
 
 class HansMainFrame(wx.Frame):
@@ -134,11 +141,14 @@ class HansMainFrame(wx.Frame):
         value = float(event.GetEventObject().GetValue())
         if any(True for n in ['rms', 'amp'] if n in name):
             value = value / 100.0
-        self.conmanager.send_data_with_lookup(name, value)
+        self.conmanager.send_message_with_lookup(name, 'f', value)
 
     def buttonPush(self, event):
         name = event.GetEventObject().GetName().replace('button', '')
-        self.conmanager.send_data_with_lookup(name, 1)
+        typ, val = 'i', 1
+        if 'kick' in name:
+            typ, val = 'm', (1, 145, 36, 125)
+        self.conmanager.send_message_with_lookup(name, typ, val)
 
 
 if __name__ == "__main__":

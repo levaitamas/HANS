@@ -314,12 +314,7 @@ def handle_osc(address, *args):
 
 def handle_osc_midi(address, *args):
     data = args[0]
-    # TODO: add midi support to pythonosc to fix the following
-    # hack required by the hans-gui
-    if data == 1:
-        midi = (145, 36, 125)
-    else:
-        midi = (data[1], data[2], data[3])
+    midi = (data[1], data[2], data[3])
     handle_midievent(*midi)
 
 
