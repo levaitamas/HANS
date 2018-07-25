@@ -57,14 +57,39 @@ class Sample(object):
             % (self.path.name, self.category)
 
 
+class SampleBank(object):
+    def __init__(self, sample_root='.'):
+        self.sample_root = sample_root
+        self.reload_samples()
+
+    def reload_samples(self):
+        self.init_samples()
+        self.load_samples(self.sample_root)
+
+    def init_samples(self):
+        self.samples = {}
+        for cat in ['Human', 'Machine', 'Music',
+                    'Nature', 'Beep', 'Other']:
+            self.samples[cat] = []
+
+    def load_samples(self, sample_root='.'):
+        if Path(sample_root).is_dir():
+            for sample in Path(sample_root).glob('**/*.aiff'):
+                self.samples[sample.parent.name].append(Sample(sample))
+        self.check_num_of_samples()
+
+    def check_num_of_samples(self):
+        num_of_samples = sum([len(s) for c, s in self.samples.items()])
+        if num_of_samples < 1:
+            raise Exception("No samples are available!")
+
+
 class Chooser:
-    def __init__(self, seed_gen, sigproc,
-                 sample_root='.', enable_ai=True):
+    def __init__(self, seed_gen, sigproc, sample_bank, enable_ai=True):
         self.sigproc = sigproc
         self.seedgen = seed_gen
         self.enable_ai = enable_ai
-        self.reset_samples()
-        self.set_sample_root(sample_root)
+        self.sample_bank = sample_bank
 
     def execute(self):
         self.seedgen.execute()
@@ -73,36 +98,20 @@ class Chooser:
                           for c in self.sigproc.output2
                           if self.sigproc.output2[c]]
         else:
-            categories = self.samples
+            categories = self.sample_bank.samples.keys()
         try:
             category = random.choice(categories)
-            idx = self.seedgen.output % len(self.samples[category])
-            self.output = self.samples[category][idx]
+            idx = self.seedgen.output % len(self.sample_bank.samples[category])
+            self.output = self.sample_bank.samples[category][idx]
         except:
             self.output = None
         logging.info(str(self.output) or "{'Path': null, 'Category': null}")
 
-    def reset_samples(self):
-        self.samples = {}
-        for cat in ['Human', 'Machine', 'Music',
-                    'Nature', 'Beep', 'Other']:
-            self.samples[cat] = []
+    def reload_samples(self):
+        self.sample_bank.reload_samples()
 
-    def set_sample_root(self, folder):
-        self.reset_samples()
-        if Path(folder).is_dir():
-            self.sample_root = folder
-            self.load_samples(folder)
-
-    def load_samples(self, folder):
-        for sample in Path(folder).glob('**/*.aiff'):
-            self.samples[sample.parent.name].append(Sample(sample))
-        self.check_num_of_samples()
-
-    def check_num_of_samples(self):
-        num_of_samples = sum([len(s) for c, s in self.samples.items()])
-        if num_of_samples < 1:
-            raise Exception("No samples are available!")
+    def set_sample_root(self, sample_root):
+        self.sample_bank = SampleBank(sample_root)
 
     def toggle_ai(self, state):
         self.enable_ai = state
@@ -324,7 +333,7 @@ def handle_osc_ctrl(address, *args):
 
 def handle_osc_cmd(address, *args):
     if 'samplereload' in address:
-        chooser.set_sample_root(chooser.sample_root)
+        chooser.reload_samples()
     elif 'rulesreload' in address:
         sigproc.set_rules_toggle_levels()
     elif 'solo' in address:
@@ -449,19 +458,12 @@ if __name__ == "__main__":
         # RawMidi is supported only since Python-Pyo version 0.7.6
         raise SystemError("Please, update your Python-Pyo install "
                           "to version 0.7.6 or later.")
-
-    server_args = {'duplex': 1, 'ichnls': 1}
-    if not sys.platform.startswith('win'):
-        server_args.update({'audio': 'jack', 'jackname': 'HANS'})
-    server = pyo.Server(**server_args)
-
     if args.verbose:
         # server.setVerbosity(8)
         logging.basicConfig(filename=args.logfile,
                             format="{'Timestamp': '%(asctime)s', 'Message': %(message)s},",
                             datefmt='%Y-%m-%d-%H-%M-%S',
                             level=logging.INFO)
-
     if args.midi:
         midi_id = args.midi
     else:
@@ -469,18 +471,24 @@ if __name__ == "__main__":
         midi_id = -1
         while (midi_id > pyo.pm_count_devices()-1 and midi_id != 99) or midi_id < 0:
             midi_id = eval(input("Please select input ID [99 for all]: "))
+
+    server_args = {'duplex': 1, 'ichnls': 1}
+    if not sys.platform.startswith('win'):
+        server_args.update({'audio': 'jack', 'jackname': 'HANS'})
+    server = pyo.Server(**server_args)
     server.setMidiInputDevice(midi_id)
-
     server.boot()
-    server.start()
 
-    sigproc = SigProc(pyo.Input(), args.rulesfile)
+    samplebank = SampleBank(sample_root=args.sampleroot)
     seedgen = SeedGen()
-    chooser = Chooser(seedgen, sigproc, sample_root=args.sampleroot)
+    sigproc = SigProc(pyo.Input(), args.rulesfile)
+    chooser = Chooser(seedgen, sigproc, sample_bank=samplebank)
     modulator = Modulator(chooser)
     sigproc.set_modulator(modulator)
     oscproc = OSCProc(args.oscport)
     midiproc = MidiProc()
+
+    server.start()
 
     signal.signal(signal.SIGINT, hansstopit)
 
