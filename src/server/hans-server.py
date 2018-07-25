@@ -251,9 +251,7 @@ class SigProc:
             pass
 
     def toggle(self, variable, limit):
-        if variable >= limit:
-            return True
-        return False
+        return variable >= limit
 
 
 class MidiProc:
