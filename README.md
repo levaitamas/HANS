@@ -39,7 +39,7 @@ Suggested:
 
 * [JACK Audio Connection Kit](http://www.jackaudio.org/downloads/)
 * [wxPython](https://wxpython.org)
-* [python-osc](https://github.com/attwad/python-osc)
+* [python-osc>=1.6.7](https://github.com/attwad/python-osc)
 * [Flask](http://flask.pocoo.org)
 
 ## Clone the Repository
