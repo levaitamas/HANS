@@ -265,8 +265,6 @@ class SigProc:
 
 class MidiProc:
     def __init__(self):
-        self.counter = 0
-        self.block = False
         self.rawm = pyo.RawMidi(handle_midievent)
         self.trigger_notes = {}
         # accented bass drum
@@ -286,20 +284,10 @@ class MidiProc:
         self.trigger_notes[note] = {'velocity': velocity,
                                     'limit': limit}
 
-    def block_midi(self):
-        time.sleep(0.25)
-        self.block = False
-
 
 def handle_midievent(status, note, velocity):
-    if midiproc.block or midiproc.counter > 2:
-        midiproc.counter = 0
-        midiproc.block = True
-        threading.Thread(target=midiproc.block_midi).start()
-        return
     # filter note-on messages
     if 144 <= status <= 159:
-        midiproc.counter += 1
         try:
             if velocity > midiproc.trigger_notes[note]['velocity'] and \
                random.random() < midiproc.trigger_notes[note]['limit']:
