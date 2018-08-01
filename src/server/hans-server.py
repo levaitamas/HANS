@@ -23,7 +23,7 @@ try:
     import pyo
 except ImportError:
     raise SystemError("Python-Pyo not found. Please, install it.")
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from pathlib import Path
 import argparse
 import logging
@@ -67,10 +67,7 @@ class SampleBank(object):
         self.load_samples(self.sample_root)
 
     def init_samples(self):
-        self.samples = {}
-        for cat in ['Human', 'Machine', 'Music',
-                    'Nature', 'Beep', 'Other']:
-            self.samples[cat] = []
+        self.samples = defaultdict(list)
 
     def load_samples(self, sample_root='.'):
         if Path(sample_root).is_dir():
