@@ -35,12 +35,88 @@ import threading
 import time
 
 
-class SeedGen:
-    def __init__(self):
-        self.output = self.execute()
+class HansModule(object):
+    def __init__(self, main=None):
+        raise NotImplementedError
+
+    def init(self):
+        pass
+
+    def terminate(self):
+        pass
+
+    def execute(self):
+        raise NotImplementedError
+
+    def get_output(self):
+        return self.output
+
+
+class HansAIModule(HansModule):
+    def toggle_ai(self, state):
+        self.enable_ai = state
+
+
+class Singleton(type):
+    # https://stackoverflow.com/q/6760685
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(
+                Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class HansMain(object, metaclass=Singleton):
+    def __init__(self, args):
+        self.modules = {
+            'samplebank': SampleBank(sample_root=args.sampleroot),
+            'seedgen': BasicSeedGen(self),
+            'sigproc': SigProc(self, pyo.Input(), args.rulesfile),
+            'chooser': Chooser(self),
+            'modulator': Modulator(self),
+            'oscproc': OSCProc(args.oscport),
+            'midiproc': MidiProc(),
+        }
+
+    def start(self):
+        for name, module in self.modules.items():
+            if isinstance(module, HansModule):
+                self.init_module(name)
+
+    def init_module(self, name):
+        self.modules[name].init()
+
+    def get_module(self, name):
+        return self.modules[str(name)]
+
+    def get_sample_categories(self):
+        return self.get_module('samplebank').get_categories()
+
+    def get_effect_types(self):
+        return self.get_module('modulator').get_effect_types()
+
+
+class BasicSeedGen(HansModule):
+    def __init__(self, main):
+        pass
 
     def execute(self):
         self.output = int(random.random() * 13579)
+
+    def get_output(self):
+        self.execute()
+        return self.output
+
+
+class DummySeedGen(HansModule):
+    def __init__(self, main):
+        self.main = main
+        self.output = 4
+
+    def execute(self):
+        pass
 
 
 class Sample(object):
@@ -80,29 +156,40 @@ class SampleBank(object):
         if num_of_samples < 1:
             raise Exception("No samples are available!")
 
+    def get_categories(self):
+        return self.samples.keys()
 
-class Chooser:
-    def __init__(self, seed_gen, sigproc, sample_bank, enable_ai=True):
-        self.sigproc = sigproc
-        self.seedgen = seed_gen
+
+class Chooser(HansAIModule):
+    def __init__(self, main, enable_ai=True):
+        self.main = main
         self.enable_ai = enable_ai
-        self.sample_bank = sample_bank
+        self.output = None
+
+    def init(self):
+        self.sample_bank = self.main.get_module('samplebank')
+        self.sigproc = self.main.get_module('sigproc')
+        self.seedgen = self.main.get_module('seedgen')
 
     def execute(self):
-        self.seedgen.execute()
         if self.enable_ai:
-            categories = [c
-                          for c in self.sigproc.output2
-                          if self.sigproc.output2[c]]
+            categories = [c for c, v in
+                          self.sigproc.get_output()['samples'].items()
+                          if v == True]
         else:
             categories = self.sample_bank.samples.keys()
         try:
             category = random.choice(categories)
-            idx = self.seedgen.output % len(self.sample_bank.samples[category])
+            idx = (self.seedgen.get_output()
+                   % len(self.sample_bank.samples[category]))
             self.output = self.sample_bank.samples[category][idx]
         except:
             self.output = None
         logging.info(str(self.output) or "{'Path': null, 'Category': null}")
+
+    def get_output(self):
+        self.execute()
+        return self.output
 
     def reload_samples(self):
         self.sample_bank.reload_samples()
@@ -110,29 +197,25 @@ class Chooser:
     def set_sample_root(self, sample_root):
         self.sample_bank = SampleBank(sample_root)
 
-    def toggle_ai(self, state):
-        self.enable_ai = state
 
-
-class SigProc:
+class SigProc(HansModule):
     Rule = namedtuple('Rule', ['active', 'inactive', 'weight'])
     Analyser = namedtuple('Analyser', ['module', 'limit'])
-    sample_categories = ['Human', 'Machine', 'Music',
-                         'Nature', 'Beep', 'Other']
-    effect_types = ['Volume', 'Speed', 'Distortion', 'Chorus', 'Reverb']
 
-    def __init__(self, audioin, rules_file, modulator=None):
-        self.set_rules_toggle_levels(rules_file)
-        self.init_analysers(audioin)
+    def __init__(self, main, audioin, rules_file='hans.rules',
+                 update_interval=0.5):
+        self.main = main
+        self.rules_file = rules_file
+        self.audioin = audioin
+        self.update_interval = update_interval
+        self._terminate = False
+
+    def init(self):
+        self.set_rules_toggle_levels(self.rules_file)
+        self.init_analysers(self.audioin)
         self.set_inputlist()
         self.init_outputlist()
-        self.update_interval = 0.5
-        self._terminate = False
-        if modulator:
-            self.set_modulator(modulator)
-
-    def set_modulator(self, modulator):
-        self.modulator = modulator
+        self.modulator = self.main.get_module('modulator')
         threading.Thread(target=self.run).start()
 
     def init_analysers(self, audioin):
@@ -146,32 +229,36 @@ class SigProc:
             self.execute()
             time.sleep(self.update_interval)
             if self.modulator.enable_ai:
-                self.modulator.set_effects(self.output)
+                self.modulator.set_effects(self.output['effects'])
+
+    def terminate(self):
+        self._terminate = True
+        time.sleep(self.update_interval)
 
     def execute(self):
+        sample_categories = self.main.get_sample_categories()
         self.set_inputlist()
         self.calcout()
-        self.output = {
+        effect_conf = {
             'Volume-param': self.denorm(self.outputlist['Volume'], 0.4, 1.0),
             'Speed-param': self.denorm(self.outputlist['Speed'], 0.4, 1.6),
             'Distortion-param': self.denorm(self.outputlist['Distortion'], 0.4, 1.0),
             'Chorus-param': self.denorm(self.outputlist['Chorus'], 1.0, 4.0),
             'Reverb-param': self.denorm(self.outputlist['Reverb'], 0.0, 0.6),
         }
-        self.output.update({cat: self.toggle(self.outputlist[cat],
+        effect_conf.update({cat: self.toggle(self.outputlist[cat],
                                              self.toggle_levels[cat])
-                            for cat in self.effect_types})
-        self.output2 = {cat: self.toggle(self.outputlist[cat],
-                                         self.toggle_levels[cat])
-                        for cat in self.sample_categories}
-        logging.info("[%s,%s,%s]" % (self.inputlist,
-                                     self.output,
-                                     self.output2))
+                            for cat in self.main.get_effect_types()})
+        sample_cats = {cat: self.toggle(self.outputlist[cat],
+                                        self.toggle_levels[cat])
+                       for cat in sample_categories}
+        self.output = {'effects': effect_conf, 'samples': sample_cats}
+        logging.info("[%s, %s]" % (self.inputlist, self.output))
 
     def set_inputlist(self):
-        self.inputlist = {m: self.norm(self.analysers[m].module.get(),
-                                       0, self.analysers[m].limit)
-                          for m in self.analysers}
+        self.inputlist = {name: self.norm(analyser.module.get(),
+                                          0, analyser.limit)
+                          for name, analyser in self.analysers.items()}
 
     def set_inputlim(self, name, value):
         setattr(self, '%slim' % name, value)
@@ -180,7 +267,7 @@ class SigProc:
         if rules_file:
             self.rules_file = rules_file
         self.rulelist = [self.Rule("%s%s" % (cat, i), cat, 1/i)
-                         for cat in self.effect_types
+                         for cat in self.main.get_effect_types()
                          for i in range(1, 3)]
         self.load_rules(self.rules_file)
         self.toggle_levels = {}
@@ -208,9 +295,10 @@ class SigProc:
                     self.toggle_levels[cap[0]] = float(cap[1])
 
     def init_outputlist(self):
-        self.outputlist = {cat: 0 for cat in self.sample_categories}
+        self.outputlist = {cat: 0
+                           for cat in self.main.get_sample_categories()}
         self.outputlist.update({'%s%s' % (c, i): 0
-                                for c in self.effect_types
+                                for c in self.main.get_effect_types()
                                 for i in ['', '1', '2']})
 
     def calcout(self):
@@ -225,27 +313,6 @@ class SigProc:
                 self.outputlist[output_name] = self.calcavg(tmplist)
                 self.age(output_name)
 
-    def norm(self, variable, min, max):
-        if min < variable < max:
-            return (variable - min) / (max - min)
-        elif variable <= min:
-            return 0
-        else:
-            return 1
-
-    def denorm(self, variable, min, max):
-        if variable:
-            return variable * (max - min) + min
-        return 0
-
-    def calcavg(self, tuplelist):
-        numerator = sum([l[0] * l[1] for l in tuplelist])
-        denominator = sum([l[1] for l in tuplelist])
-        try:
-            return numerator / denominator
-        except ZeroDivisionError:
-            return 0
-
     def age(self, key):
         try:
             self.outputlist["%s2" % key] = 0.5 * self.outputlist["%s1" % key]
@@ -253,8 +320,107 @@ class SigProc:
         except KeyError:
             pass
 
-    def toggle(self, variable, limit):
+    @staticmethod
+    def norm(variable, min, max):
+        if min < variable < max:
+            return (variable - min) / (max - min)
+        elif variable <= min:
+            return 0
+        else:
+            return 1
+
+    @staticmethod
+    def denorm(variable, min, max):
+        if variable:
+            return variable * (max - min) + min
+        return 0
+
+    @staticmethod
+    def calcavg(tuplelist):
+        numerator = sum([l[0] * l[1] for l in tuplelist])
+        denominator = sum([l[1] for l in tuplelist])
+        try:
+            return numerator / denominator
+        except ZeroDivisionError:
+            return 0
+
+    @staticmethod
+    def toggle(variable, limit):
         return variable >= limit
+
+
+class Modulator(HansAIModule):
+    def __init__(self, main, enable_ai=True):
+        self.main = main
+        self.enable_ai = enable_ai
+
+        # Effect Chain:
+        # 'Volume' -> 'Speed' -> 'Distortion'
+        # -> 'Chorus' -> 'Reverb' -> 'Pan'
+
+        # Effect parameters:
+        # 'Volume-param': between 0 and 1
+        # 'Speed-param': 1 - original; 0-1 slow; 1< - fast
+        # 'Distortion-param': between 0 and 1
+        # 'Chorus-param': between 0 and 5
+        # 'Reverb-param': between 0 and 1
+
+        self.effect_types = ['Volume', 'Speed', 'Distortion',
+                             'Chorus', 'Reverb']
+        self.pan_positions = [0.02, 0.25, 0.5, 0.75, 0.98]
+        self.effectchain = {}
+        for e in self.effect_types:
+            self.effectchain[e] = False
+            self.effectchain['%s-param' % e] = 0
+
+        self.player = pyo.TableRead(pyo.NewTable(0.1), loop=False)
+        denorm_noise = pyo.Noise(1e-24)
+        self.distortion = pyo.Disto(self.player, slope=0.7)
+        self.sw_distortion = pyo.Interp(self.player, self.distortion, interp=0)
+        self.chorus = pyo.Chorus(self.sw_distortion + denorm_noise, bal=0.6)
+        self.sw_chorus = pyo.Interp(self.sw_distortion, self.chorus, interp=0)
+        self.reverb = pyo.Freeverb(self.sw_chorus + denorm_noise, bal=0.7)
+        self.sw_reverb = pyo.Interp(self.sw_chorus, self.reverb, interp=0)
+        self.output = pyo.Pan(self.sw_reverb, outs=2, spread=0.1)
+        self.output.out()
+
+    def init(self):
+        self.chooser = self.main.get_module('chooser')
+
+    def execute(self):
+        sample = self.chooser.get_output()
+        if sample is None:
+            return
+        self.player.stop()
+        self.player.setTable(sample.audio)
+        if self.effectchain['Volume']:
+            self.player.setMul(self.effectchain['Volume-param'])
+        freq = sample.audio_rate * {True: self.effectchain['Speed-param'],
+                                    False: 1}[self.effectchain['Speed']]
+        self.player.setFreq(freq)
+        for effect in ['Distortion', 'Chorus', 'Reverb']:
+            sw = getattr(self, 'sw_%s' % effect.lower())
+            sw.interp = int(self.effectchain[effect])
+
+        self.output.setPan(random.choice(self.pan_positions))
+        self.player.play()
+
+    def set_effects(self, new_setup):
+        self.effectchain = new_setup
+        self.distortion.setDrive(self.effectchain['Distortion-param'])
+        self.chorus.reset()
+        self.chorus.setDepth(self.effectchain['Chorus-param'])
+        self.reverb.reset()
+        self.reverb.setSize(self.effectchain['Reverb-param'])
+
+    def toggle_effect(self, name, state):
+        try:
+            self.effectchain[name] = state
+        except KeyError:
+            pass
+
+    def get_effect_types(self):
+        return self.effect_types
 
 
 class MidiProc:
@@ -283,9 +449,10 @@ def handle_midievent(status, note, velocity):
     # filter note-on messages
     if 144 <= status <= 159:
         try:
+            midiproc = hans.get_module('midiproc')
             if velocity > midiproc.trigger_notes[note]['velocity'] and \
                random.random() < midiproc.trigger_notes[note]['limit']:
-                modulator.execute()
+                hans.get_module('modulator').execute()
         except KeyError:
             pass
 
@@ -309,15 +476,16 @@ def handle_osc_midi(address, *args):
 
 def handle_osc_ctrl(address, *args):
     param = address.split('/')[-1]
+    sigproc = hans.get_module('sigproc')
     if param in sigproc.analysers:
         sigproc.set_inputlim(param, args[0])
 
 
 def handle_osc_cmd(address, *args):
     if 'samplereload' in address:
-        chooser.reload_samples()
+        hans.get_module('chooser').reload_samples()
     elif 'rulesreload' in address:
-        sigproc.set_rules_toggle_levels()
+        hans.get_module('sigproc').set_rules_toggle_levels()
     elif 'solo' in address:
         threading.Thread(target=doTheWookieeBoogie).start()
         logging.info('\'SOLO request\'')
@@ -329,86 +497,12 @@ def doTheWookieeBoogie():
         time.sleep(0.07 + random.random()/4)
 
 
-class Modulator:
-    effect_types = ['Volume', 'Speed', 'Distortion', 'Chorus', 'Reverb']
-    pan_positions = [0.02, 0.25, 0.5, 0.75, 0.98]
-
-    def __init__(self, chooser, enable_ai=True):
-        self.chooser = chooser
-        self.enable_ai = enable_ai
-
-        # Effect Chain:
-        # 'Volume' -> 'Speed' -> 'Distortion'
-        # -> 'Chorus' -> 'Reverb' -> 'Pan'
-
-        # Effect parameters:
-        # 'Volume-param': between 0 and 1
-        # 'Speed-param': 1 - original; 0-1 slow; 1< - fast
-        # 'Distortion-param': between 0 and 1
-        # 'Chorus-param': between 0 and 5
-        # 'Reverb-param': between 0 and 1
-
-        self.effectchain = {}
-        for e in self.effect_types:
-            self.effectchain[e] = False
-            self.effectchain['%s-param' % e] = 0
-
-        self.player = pyo.TableRead(pyo.NewTable(0.1), loop=False)
-        denorm_noise = pyo.Noise(1e-24)
-        self.distortion = pyo.Disto(self.player, slope=0.7)
-        self.sw_distortion = pyo.Interp(self.player, self.distortion, interp=0)
-        self.chorus = pyo.Chorus(self.sw_distortion + denorm_noise, bal=0.6)
-        self.sw_chorus = pyo.Interp(self.sw_distortion, self.chorus, interp=0)
-        self.reverb = pyo.Freeverb(self.sw_chorus + denorm_noise, bal=0.7)
-        self.sw_reverb = pyo.Interp(self.sw_chorus, self.reverb, interp=0)
-        self.output = pyo.Pan(self.sw_reverb, outs=2, spread=0.1)
-        self.output.out()
-
-    def execute(self):
-        self.chooser.execute()
-        sample = self.chooser.output
-        if sample is None:
-            return
-        self.player.stop()
-        self.player.setTable(sample.audio)
-
-        if self.effectchain['Volume']:
-            self.player.setMul(self.effectchain['Volume-param'])
-        freq = {True: self.effectchain['Speed-param'],
-                False: 1}[self.effectchain['Speed']] * sample.audio_rate
-        self.player.setFreq(freq)
-        for effect in ['Distortion', 'Chorus', 'Reverb']:
-            sw = getattr(self, 'sw_%s' % effect.lower())
-            sw.interp = {True: 1, False: 0}[self.effectchain[effect]]
-
-        self.output.setPan(random.choice(self.pan_positions))
-        self.player.play()
-
-    def set_effects(self, new_setup):
-        self.effectchain = new_setup
-        self.distortion.setDrive(self.effectchain['Distortion-param'])
-        self.chorus.reset()
-        self.chorus.setDepth(self.effectchain['Chorus-param'])
-        self.reverb.reset()
-        self.reverb.setSize(self.effectchain['Reverb-param'])
-
-    def toggle_effect(self, name, state):
-        try:
-            self.effectchain[name] = state
-        except KeyError:
-            pass
-
-    def toggle_ai(self, state):
-        self.enable_ai = state
-
-
 def hansstopit(signum, frame):
     server.deactivateMidi()
-    sigproc._terminate = True
-    time.sleep(sigproc.update_interval)
+    hans.get_module('sigproc').terminate()
     server.stop()
     time.sleep(0.2)
-    print(' ')
+    print()
     sys.exit(0)
 
 
@@ -461,14 +555,8 @@ if __name__ == "__main__":
     server.setMidiInputDevice(midi_id)
     server.boot()
 
-    samplebank = SampleBank(sample_root=args.sampleroot)
-    seedgen = SeedGen()
-    sigproc = SigProc(pyo.Input(), args.rulesfile)
-    chooser = Chooser(seedgen, sigproc, sample_bank=samplebank)
-    modulator = Modulator(chooser)
-    sigproc.set_modulator(modulator)
-    oscproc = OSCProc(args.oscport)
-    midiproc = MidiProc()
+    hans = HansMain(args)
+    hans.start()
 
     server.start()
 
