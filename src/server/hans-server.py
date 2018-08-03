@@ -218,12 +218,9 @@ class SigProc:
             tmplist = []
             for rule in self.rulelist:
                 if output_name == rule.inactive:
-                    tmplist += [(self.inputlist[in_name], rule.weight)
-                                for in_name in self.inputlist
-                                if in_name == rule.active]
-                    tmplist += [(self.outputlist[out_name], rule.weight)
-                                for out_name in self.outputlist
-                                if out_name == rule.active]
+                    for rlist in [self.inputlist, self.outputlist]:
+                        tmplist += [(rlist[name], rule.weight)
+                                    for name in rlist if name == rule.active]
             if tmplist:
                 self.outputlist[output_name] = self.calcavg(tmplist)
                 self.age(output_name)
