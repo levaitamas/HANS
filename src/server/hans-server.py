@@ -19,63 +19,35 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-try:
-    import pyo
-except ImportError:
-    raise SystemError("Python-Pyo not found. Please, install it.")
-from collections import namedtuple, defaultdict
-from pathlib import Path
 import argparse
-import logging
+import pyo
 import random
-import re
 import signal
 import sys
 import threading
 import time
 
-
-class HansModule(object):
-    def __init__(self, main=None):
-        raise NotImplementedError
-
-    def init(self):
-        pass
-
-    def terminate(self):
-        pass
-
-    def execute(self):
-        raise NotImplementedError
-
-    def get_output(self):
-        return self.output
+import lib.choosers
+import lib.modulators
+import lib.seedgens
+import lib.sigprocs
+import lib.util
+from lib.module_base import HansModule
+from lib.sample_handling import SampleBank
 
 
-class HansAIModule(HansModule):
-    def toggle_ai(self, state):
-        self.enable_ai = state
-
-
-class Singleton(type):
-    # https://stackoverflow.com/q/6760685
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(
-                Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-
-class HansMain(object, metaclass=Singleton):
+class HansMain(object, metaclass=lib.util.Singleton):
     def __init__(self, args):
         self.modules = {
             'samplebank': SampleBank(sample_root=args.sampleroot),
-            'seedgen': BasicSeedGen(self),
-            'sigproc': SigProc(self, pyo.Input(), args.rulesfile),
-            'chooser': Chooser(self),
-            'modulator': Modulator(self),
+            'seedgen': getattr(lib.seedgens, 'BasicSeedGen')(self),
+            'sigproc':
+            getattr(lib.sigprocs, 'SigProc')(
+                self, pyo.Input(), args.rulesfile),
+            'chooser':
+            getattr(lib.choosers, 'IntelligentChooser')(self),
+            'modulator':
+            getattr(lib.modulators, 'Modulator')(self),
             'oscproc': OSCProc(args.oscport),
             'midiproc': MidiProc(),
         }
@@ -96,331 +68,6 @@ class HansMain(object, metaclass=Singleton):
 
     def get_effect_types(self):
         return self.get_module('modulator').get_effect_types()
-
-
-class BasicSeedGen(HansModule):
-    def __init__(self, main):
-        pass
-
-    def execute(self):
-        self.output = int(random.random() * 13579)
-
-    def get_output(self):
-        self.execute()
-        return self.output
-
-
-class DummySeedGen(HansModule):
-    def __init__(self, main):
-        self.main = main
-        self.output = 4
-
-    def execute(self):
-        pass
-
-
-class Sample(object):
-    __slots__ = ['path', 'category', 'audio', 'audio_rate']
-
-    def __init__(self, path, category=None):
-        self.path = Path(path)
-        self.category = category or self.path.parent.name
-        self.audio = pyo.SndTable(str(self.path))
-        self.audio_rate = self.audio.getRate()
-
-    def __str__(self):
-        return "{'Path': '%s', 'Category': '%s'}" \
-            % (self.path.name, self.category)
-
-
-class SampleBank(object):
-    def __init__(self, sample_root='.'):
-        self.sample_root = sample_root
-        self.reload_samples()
-
-    def reload_samples(self):
-        self.init_samples()
-        self.load_samples(self.sample_root)
-
-    def init_samples(self):
-        self.samples = defaultdict(list)
-
-    def load_samples(self, sample_root='.'):
-        if Path(sample_root).is_dir():
-            for sample in Path(sample_root).glob('**/*.aiff'):
-                self.samples[sample.parent.name].append(Sample(sample))
-        self.check_num_of_samples()
-
-    def check_num_of_samples(self):
-        num_of_samples = sum([len(s) for c, s in self.samples.items()])
-        if num_of_samples < 1:
-            raise Exception("No samples are available!")
-
-    def get_categories(self):
-        return self.samples.keys()
-
-
-class Chooser(HansAIModule):
-    def __init__(self, main, enable_ai=True):
-        self.main = main
-        self.enable_ai = enable_ai
-        self.output = None
-
-    def init(self):
-        self.sample_bank = self.main.get_module('samplebank')
-        self.sigproc = self.main.get_module('sigproc')
-        self.seedgen = self.main.get_module('seedgen')
-
-    def execute(self):
-        if self.enable_ai:
-            categories = [c for c, v in
-                          self.sigproc.get_output()['samples'].items()
-                          if v == True]
-        else:
-            categories = self.sample_bank.samples.keys()
-        try:
-            category = random.choice(categories)
-            idx = (self.seedgen.get_output()
-                   % len(self.sample_bank.samples[category]))
-            self.output = self.sample_bank.samples[category][idx]
-        except:
-            self.output = None
-        logging.info(str(self.output) or "{'Path': null, 'Category': null}")
-
-    def get_output(self):
-        self.execute()
-        return self.output
-
-    def reload_samples(self):
-        self.sample_bank.reload_samples()
-
-    def set_sample_root(self, sample_root):
-        self.sample_bank = SampleBank(sample_root)
-
-
-class SigProc(HansModule):
-    Rule = namedtuple('Rule', ['active', 'inactive', 'weight'])
-    Analyser = namedtuple('Analyser', ['module', 'limit'])
-
-    def __init__(self, main, audioin, rules_file='hans.rules',
-                 update_interval=0.5):
-        self.main = main
-        self.rules_file = rules_file
-        self.audioin = audioin
-        self.update_interval = update_interval
-        self._terminate = False
-
-    def init(self):
-        self.set_rules_toggle_levels(self.rules_file)
-        self.init_analysers(self.audioin)
-        self.set_inputlist()
-        self.init_outputlist()
-        self.modulator = self.main.get_module('modulator')
-        threading.Thread(target=self.run).start()
-
-    def init_analysers(self, audioin):
-        self.analysers = {'yin': self.Analyser(pyo.Yin(audioin), 400),
-                          'cen': self.Analyser(pyo.Centroid(audioin), 6000),
-                          'rms': self.Analyser(pyo.Follower(audioin), 0.6),
-                          'amp': self.Analyser(pyo.PeakAmp(audioin), 0.8)}
-
-    def run(self):
-        while not self._terminate:
-            self.execute()
-            time.sleep(self.update_interval)
-            if self.modulator.enable_ai:
-                self.modulator.set_effects(self.output['effects'])
-
-    def terminate(self):
-        self._terminate = True
-        time.sleep(self.update_interval)
-
-    def execute(self):
-        sample_categories = self.main.get_sample_categories()
-        self.set_inputlist()
-        self.calcout()
-        effect_conf = {
-            'Volume-param': self.denorm(self.outputlist['Volume'], 0.4, 1.0),
-            'Speed-param': self.denorm(self.outputlist['Speed'], 0.4, 1.6),
-            'Distortion-param': self.denorm(self.outputlist['Distortion'], 0.4, 1.0),
-            'Chorus-param': self.denorm(self.outputlist['Chorus'], 1.0, 4.0),
-            'Reverb-param': self.denorm(self.outputlist['Reverb'], 0.0, 0.6),
-        }
-        effect_conf.update({cat: self.toggle(self.outputlist[cat],
-                                             self.toggle_levels[cat])
-                            for cat in self.main.get_effect_types()})
-        sample_cats = {cat: self.toggle(self.outputlist[cat],
-                                        self.toggle_levels[cat])
-                       for cat in sample_categories}
-        self.output = {'effects': effect_conf, 'samples': sample_cats}
-        logging.info("[%s, %s]" % (self.inputlist, self.output))
-
-    def set_inputlist(self):
-        self.inputlist = {name: self.norm(analyser.module.get(),
-                                          0, analyser.limit)
-                          for name, analyser in self.analysers.items()}
-
-    def set_inputlim(self, name, value):
-        setattr(self, '%slim' % name, value)
-
-    def set_rules_toggle_levels(self, rules_file=None):
-        if rules_file:
-            self.rules_file = rules_file
-        self.rulelist = [self.Rule("%s%s" % (cat, i), cat, 1/i)
-                         for cat in self.main.get_effect_types()
-                         for i in range(1, 3)]
-        self.load_rules(self.rules_file)
-        self.toggle_levels = {}
-        self.load_toggle_levels(self.rules_file)
-
-    def load_rules(self, rules_file):
-        # active | inactive : weight
-        regex = "^\s*(\w+)\s*\|\s*(\w+)\s*\:\s*([-+]?\d*\.\d+|\d)"
-        pattern = re.compile(regex)
-        with open(rules_file) as rfile:
-            for line in rfile:
-                caps = re.findall(pattern, line)
-                for cap in caps:
-                    new_rule = self.Rule(cap[0], cap[1], float(cap[2]))
-                    self.rulelist.append(new_rule)
-
-    def load_toggle_levels(self, rules_file):
-        # category : weight
-        regex = "^\s*(\w+)\s*\:\s*([-+]?\d*\.\d+|\d)"
-        pattern = re.compile(regex)
-        with open(rules_file) as rfile:
-            for line in rfile:
-                caps = re.findall(pattern, line)
-                for cap in caps:
-                    self.toggle_levels[cap[0]] = float(cap[1])
-
-    def init_outputlist(self):
-        self.outputlist = {cat: 0
-                           for cat in self.main.get_sample_categories()}
-        self.outputlist.update({'%s%s' % (c, i): 0
-                                for c in self.main.get_effect_types()
-                                for i in ['', '1', '2']})
-
-    def calcout(self):
-        for output_name in self.outputlist:
-            tmplist = []
-            for rule in self.rulelist:
-                if output_name == rule.inactive:
-                    for rlist in [self.inputlist, self.outputlist]:
-                        tmplist += [(rlist[name], rule.weight)
-                                    for name in rlist if name == rule.active]
-            if tmplist:
-                self.outputlist[output_name] = self.calcavg(tmplist)
-                self.age(output_name)
-
-    def age(self, key):
-        try:
-            self.outputlist["%s2" % key] = 0.5 * self.outputlist["%s1" % key]
-            self.outputlist["%s1" % key] = self.outputlist[key]
-        except KeyError:
-            pass
-
-    @staticmethod
-    def norm(variable, min, max):
-        if min < variable < max:
-            return (variable - min) / (max - min)
-        elif variable <= min:
-            return 0
-        else:
-            return 1
-
-    @staticmethod
-    def denorm(variable, min, max):
-        if variable:
-            return variable * (max - min) + min
-        return 0
-
-    @staticmethod
-    def calcavg(tuplelist):
-        numerator = sum([l[0] * l[1] for l in tuplelist])
-        denominator = sum([l[1] for l in tuplelist])
-        try:
-            return numerator / denominator
-        except ZeroDivisionError:
-            return 0
-
-    @staticmethod
-    def toggle(variable, limit):
-        return variable >= limit
-
-
-class Modulator(HansAIModule):
-    def __init__(self, main, enable_ai=True):
-        self.main = main
-        self.enable_ai = enable_ai
-
-        # Effect Chain:
-        # 'Volume' -> 'Speed' -> 'Distortion'
-        # -> 'Chorus' -> 'Reverb' -> 'Pan'
-
-        # Effect parameters:
-        # 'Volume-param': between 0 and 1
-        # 'Speed-param': 1 - original; 0-1 slow; 1< - fast
-        # 'Distortion-param': between 0 and 1
-        # 'Chorus-param': between 0 and 5
-        # 'Reverb-param': between 0 and 1
-
-        self.effect_types = ['Volume', 'Speed', 'Distortion',
-                             'Chorus', 'Reverb']
-        self.pan_positions = [0.02, 0.25, 0.5, 0.75, 0.98]
-        self.effectchain = {}
-        for e in self.effect_types:
-            self.effectchain[e] = False
-            self.effectchain['%s-param' % e] = 0
-
-        self.player = pyo.TableRead(pyo.NewTable(0.1), loop=False)
-        denorm_noise = pyo.Noise(1e-24)
-        self.distortion = pyo.Disto(self.player, slope=0.7)
-        self.sw_distortion = pyo.Interp(self.player, self.distortion, interp=0)
-        self.chorus = pyo.Chorus(self.sw_distortion + denorm_noise, bal=0.6)
-        self.sw_chorus = pyo.Interp(self.sw_distortion, self.chorus, interp=0)
-        self.reverb = pyo.Freeverb(self.sw_chorus + denorm_noise, bal=0.7)
-        self.sw_reverb = pyo.Interp(self.sw_chorus, self.reverb, interp=0)
-        self.output = pyo.Pan(self.sw_reverb, outs=2, spread=0.1)
-        self.output.out()
-
-    def init(self):
-        self.chooser = self.main.get_module('chooser')
-
-    def execute(self):
-        sample = self.chooser.get_output()
-        if sample is None:
-            return
-        self.player.stop()
-        self.player.setTable(sample.audio)
-        if self.effectchain['Volume']:
-            self.player.setMul(self.effectchain['Volume-param'])
-        freq = sample.audio_rate * {True: self.effectchain['Speed-param'],
-                                    False: 1}[self.effectchain['Speed']]
-        self.player.setFreq(freq)
-        for effect in ['Distortion', 'Chorus', 'Reverb']:
-            sw = getattr(self, 'sw_%s' % effect.lower())
-            sw.interp = int(self.effectchain[effect])
-
-        self.output.setPan(random.choice(self.pan_positions))
-        self.player.play()
-
-    def set_effects(self, new_setup):
-        self.effectchain = new_setup
-        self.distortion.setDrive(self.effectchain['Distortion-param'])
-        self.chorus.reset()
-        self.chorus.setDepth(self.effectchain['Chorus-param'])
-        self.reverb.reset()
-        self.reverb.setSize(self.effectchain['Reverb-param'])
-
-    def toggle_effect(self, name, state):
-        try:
-            self.effectchain[name] = state
-        except KeyError:
-            pass
-
-    def get_effect_types(self):
-        return self.effect_types
 
 
 class MidiProc:
@@ -488,7 +135,6 @@ def handle_osc_cmd(address, *args):
         hans.get_module('sigproc').set_rules_toggle_levels()
     elif 'solo' in address:
         threading.Thread(target=doTheWookieeBoogie).start()
-        logging.info('\'SOLO request\'')
 
 
 def doTheWookieeBoogie():
@@ -525,21 +171,13 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--verbose',
                         help='Turn on verbose mode',
                         action='store_true')
-    parser.add_argument('-l', '--logfile',
-                        help='Logfile',
-                        default='hans-server.log')
     args = parser.parse_args()
 
     if int(''.join(map(str, pyo.getVersion()))) < 76:
         # RawMidi is supported only since Python-Pyo version 0.7.6
         raise SystemError("Please, update your Python-Pyo install "
                           "to version 0.7.6 or later.")
-    if args.verbose:
-        # server.setVerbosity(8)
-        logging.basicConfig(filename=args.logfile,
-                            format="{'Timestamp': '%(asctime)s', 'Message': %(message)s},",
-                            datefmt='%Y-%m-%d-%H-%M-%S',
-                            level=logging.INFO)
+
     if args.midi:
         midi_id = args.midi
     else:
@@ -553,6 +191,8 @@ if __name__ == "__main__":
         server_args.update({'audio': 'jack', 'jackname': 'HANS'})
     server = pyo.Server(**server_args)
     server.setMidiInputDevice(midi_id)
+    if args.verbose:
+        server.setVerbosity(8)
     server.boot()
 
     hans = HansMain(args)
@@ -561,8 +201,6 @@ if __name__ == "__main__":
     server.start()
 
     signal.signal(signal.SIGINT, hansstopit)
-
-    logging.info('\'HANS-SERVER started\'')
 
     while True:
         time.sleep(2)
