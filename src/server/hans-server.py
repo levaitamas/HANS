@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import argparse
+import json
 import pyo
 import random
 import signal
@@ -38,19 +39,26 @@ from lib.sample_handling import SampleBank
 
 class HansMain(object, metaclass=lib.util.Singleton):
     def __init__(self, args):
-        self.modules = {
-            'samplebank': SampleBank(sample_root=args.sampleroot),
-            'seedgen': getattr(lib.seedgens, 'BasicSeedGen')(self),
-            'sigproc':
-            getattr(lib.sigprocs, 'SigProc')(
-                self, pyo.Input(), args.rulesfile),
-            'chooser':
-            getattr(lib.choosers, 'IntelligentChooser')(self),
-            'modulator':
-            getattr(lib.modulators, 'Modulator')(self),
-            'oscproc': OSCProc(args.oscport),
-            'midiproc': MidiProc(),
-        }
+        self.init_modules_from_config(args.configfile)
+
+    def init_modules_from_config(self, configfile):
+        with open(configfile) as config_file:
+            config = json.load(config_file)
+            modules = config['modules']
+            self.modules = {
+                'samplebank': SampleBank(sample_root=args.sampleroot),
+                'seedgen':
+                getattr(lib.seedgens, modules['seedgen'])(self),
+                'sigproc':
+                getattr(lib.sigprocs, modules['sigproc'])(
+                    self, pyo.Input(), args.rulesfile),
+                'chooser':
+                getattr(lib.choosers, modules['chooser'])(self),
+                'modulator':
+                getattr(lib.modulators, modules['modulator'])(self),
+                'oscproc': OSCProc(args.oscport),
+                'midiproc': MidiProc()
+            }
 
     def start(self):
         for name, module in self.modules.items():
@@ -168,6 +176,9 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--rulesfile',
                         help='File containing AI rules and toggle levels',
                         default='hans.rules')
+    parser.add_argument('-c', '--configfile',
+                        help='HANS config file',
+                        default='hans-config.json')
     parser.add_argument('-v', '--verbose',
                         help='Turn on verbose mode',
                         action='store_true')

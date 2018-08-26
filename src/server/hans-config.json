@@ -1,0 +1,8 @@
+{
+    "modules":{
+	"seedgen": "BasicSeedGen",
+	"sigproc": "SigProc",
+	"chooser": "IntelligentChooser",
+	"modulator": "Modulator"
+    }
+}
