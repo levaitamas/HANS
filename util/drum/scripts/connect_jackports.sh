@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 jack_disconnect JackTrip:send_1 system:capture_1
 jack_disconnect JackTrip:send_2 system:capture_2

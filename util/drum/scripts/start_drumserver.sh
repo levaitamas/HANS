@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 DIR="$(dirname "${BASH_SOURCE[0]}")"
 . ${DIR}/config.sh
 

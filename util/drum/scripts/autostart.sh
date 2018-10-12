@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 HANS_DRUM_SCRIPTS_DIR="/home/alarm/HANS/util/drum/scripts"
 CIRRUS_NG_SCRIPTS_DIR="/home/alarm/scripts"

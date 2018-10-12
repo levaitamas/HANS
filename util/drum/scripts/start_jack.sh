@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 sudo schedtool -R -p 98 `pidof jackdbus`
 jack_control eps realtime true
 jack_control ds alsa

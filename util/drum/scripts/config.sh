@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # file structure
 DRUM_ROOT=""$(dirname "${BASH_SOURCE[0]}")"/.."
