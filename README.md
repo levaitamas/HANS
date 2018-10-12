@@ -38,8 +38,8 @@ Recommended:
 Suggested:
 
 * [JACK Audio Connection Kit](http://www.jackaudio.org/downloads/)
-* [wxPython](https://wxpython.org)
 * [python-osc>=1.6.7](https://github.com/attwad/python-osc)
+* [wxPython](https://wxpython.org)
 * [Flask](http://flask.pocoo.org)
 
 ## Clone the Repository
@@ -55,7 +55,7 @@ Create a directory for your samples with the following sub-directories:
 | Subdir    | Examples                                     |
 | :---:     | :---                                         |
 | `Beep`    | alarms, signals (microwave, tram), DTMF      |
-| `Human`   | speech, spoken words,                        |
+| `Human`   | speech, spoken words, yawns                  |
 | `Machine` | washing machine, electric razor, transformer |
 | `Music`   | short melodies, single notes                 |
 | `Nature`  | soundscapes, birds, water                    |
@@ -68,13 +68,12 @@ cd samples
 mkdir Beep Human Machine Music Nature Other
 ```
 
-Copy your samples to the specific directories. Samples must have
-`aiff` format.
+Copy your `aiff` samples to the specific directories.
 
 ## Musical Instruments
 
-The preparations of the software musical instruments vary. Please,
-take a look at their source code:
+The preparations of the software musical instruments vary. For further
+information check the source code:
 
 - [drum module](util/drum/)
 
@@ -82,10 +81,10 @@ take a look at their source code:
 
 # Usage
 
-HANS follows a basic client-server architecture. It provides various
-clients: a web interface on which the audience can signal the server,
-and a graphical user interface on which parameters of the server's AI
-can be set.
+HANS follows a client-server architecture. It provides various
+clients: a web interface on which the audience can trigger the server,
+and a graphical user interface on which OSC triggers can be sent or
+parameters of the server's AI component can be set.
 
 ## 1. Start Your Audio and Midi System
 
@@ -96,11 +95,11 @@ Alternatively you can trigger HANS via its OSC interface at `/hans/midi`.
 
 ## 2. Run the Server
 
-Important: on non-Windows operating systems the server uses JACK to
+**Important**: on non-Windows operating systems the server uses JACK to
 access the audio system.
 
-Server configuration can be done via command line arguments, however,
-the MIDI input channel can be set interactively.
+The server is configurable with its command line arguments. The MIDI
+input channel can be set interactively.
 
 To start the server listening on all MIDI input channel use a similar
 command:
