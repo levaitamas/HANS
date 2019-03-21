@@ -31,4 +31,4 @@ class HansModule(object):
         raise NotImplementedError
 
     def get_output(self):
-        return self.output
+        return getattr(self, 'output', None)

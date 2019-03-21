@@ -21,12 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import argparse
 import json
-import pyo
 import random
 import signal
 import sys
 import threading
 import time
+
+import pyo
 
 import lib.choosers
 import lib.modulators
@@ -118,7 +119,7 @@ class OSCProc:
 
 
 def handle_osc(address, *args):
-    for type in ['midi', 'ctrl', 'cmd']:
+    for type in ('midi', 'ctrl', 'cmd'):
         if type in address:
             globals()['handle_osc_%s' % type](address, *args)
 
@@ -142,10 +143,10 @@ def handle_osc_cmd(address, *args):
     elif 'rulesreload' in address:
         hans.get_module('sigproc').set_rules_toggle_levels()
     elif 'solo' in address:
-        threading.Thread(target=doTheWookieeBoogie).start()
+        threading.Thread(target=do_the_wookiee_boogie).start()
 
 
-def doTheWookieeBoogie():
+def do_the_wookiee_boogie():
     for _ in range(random.randrange(42, 65)):
         handle_midievent(145, 36, 125)
         time.sleep(0.07 + random.random()/4)

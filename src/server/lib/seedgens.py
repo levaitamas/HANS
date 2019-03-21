@@ -21,7 +21,7 @@ from .module_base import HansModule
 
 class BasicSeedGen(HansModule):
     def __init__(self, main):
-        pass
+        self.output = self.execute()
 
     def execute(self):
         self.output = int(random.random() * 13579)

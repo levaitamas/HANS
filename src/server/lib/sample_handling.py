@@ -15,10 +15,9 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-import pyo
 from collections import defaultdict
 from pathlib import Path
-
+import pyo
 
 class Sample(object):
     __slots__ = ['path', 'category', 'audio', 'audio_rate']
@@ -37,6 +36,7 @@ class Sample(object):
 class SampleBank(object):
     def __init__(self, sample_root='.'):
         self.sample_root = sample_root
+        self.samples = None
         self.reload_samples()
 
     def reload_samples(self):

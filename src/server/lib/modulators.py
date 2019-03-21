@@ -15,8 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-import pyo
 import random
+import pyo
 from .module_base import HansModule
 
 
@@ -24,6 +24,7 @@ class Modulator(HansModule):
     def __init__(self, main, enable_ai=True):
         self.main = main
         self.enable_ai = enable_ai
+        self.chooser = None
 
         # Effect Chain:
         # 'Volume' -> 'Speed' -> 'Distortion'
@@ -69,7 +70,7 @@ class Modulator(HansModule):
         freq = sample.audio_rate * {True: self.effectchain['Speed-param'],
                                     False: 1}[self.effectchain['Speed']]
         self.player.setFreq(freq)
-        for effect in ['Distortion', 'Chorus', 'Reverb']:
+        for effect in ('Distortion', 'Chorus', 'Reverb'):
             sw = getattr(self, 'sw_%s' % effect.lower())
             sw.interp = int(self.effectchain[effect])
 

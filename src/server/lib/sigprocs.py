@@ -15,11 +15,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-import pyo
 import re
 import threading
 import time
 from collections import namedtuple
+
+import pyo
 
 from .module_base import HansModule
 
@@ -35,6 +36,13 @@ class SigProc(HansModule):
         self.audioin = audioin
         self.update_interval = update_interval
         self._terminate = False
+        self.modulator = None
+        self.analysers = None
+        self.inputlist = None
+        self.outputlist = None
+        self.rulelist = None
+        self.toggle_levels = None
+        self.output = None
 
     def init(self):
         self.set_rules_toggle_levels(self.rules_file)
@@ -100,7 +108,7 @@ class SigProc(HansModule):
 
     def load_rules(self, rules_file):
         # active | inactive : weight
-        regex = "^\s*(\w+)\s*\|\s*(\w+)\s*\:\s*([-+]?\d*\.\d+|\d)"
+        regex = r"^\s*(\w+)\s*\|\s*(\w+)\s*\:\s*([-+]?\d*\.\d+|\d)"
         pattern = re.compile(regex)
         with open(rules_file) as rfile:
             for line in rfile:
@@ -111,7 +119,7 @@ class SigProc(HansModule):
 
     def load_toggle_levels(self, rules_file):
         # category : weight
-        regex = "^\s*(\w+)\s*\:\s*([-+]?\d*\.\d+|\d)"
+        regex = r"^\s*(\w+)\s*\:\s*([-+]?\d*\.\d+|\d)"
         pattern = re.compile(regex)
         with open(rules_file) as rfile:
             for line in rfile:
@@ -124,14 +132,14 @@ class SigProc(HansModule):
                            for cat in self.main.get_sample_categories()}
         self.outputlist.update({'%s%s' % (c, i): 0
                                 for c in self.main.get_effect_types()
-                                for i in ['', '1', '2']})
+                                for i in ('', '1', '2')})
 
     def calcout(self):
         for output_name in self.outputlist:
             tmplist = []
             for rule in self.rulelist:
                 if output_name == rule.inactive:
-                    for rlist in [self.inputlist, self.outputlist]:
+                    for rlist in (self.inputlist, self.outputlist):
                         tmplist += [(rlist[name], rule.weight)
                                     for name in rlist if name == rule.active]
             if tmplist:
@@ -151,8 +159,7 @@ class SigProc(HansModule):
             return (variable - min) / (max - min)
         elif variable <= min:
             return 0
-        else:
-            return 1
+        return 1
 
     @staticmethod
     def denorm(variable, min, max):

@@ -29,7 +29,7 @@ class ChooserBase(HansModule):
 
     def get_output(self):
         self.execute()
-        return self.output
+        return getattr(self, 'output', None)
 
     def reload_samples(self):
         self.sample_bank.reload_samples()
@@ -40,7 +40,7 @@ class ChooserBase(HansModule):
     def choose_from_categories(self, categories):
         try:
             category = random.choice(categories)
-            idx = (self.seedgen.get_output()
+            idx = (getattr(self, 'seedgen', None).get_output()
                    % len(self.sample_bank.samples[category]))
             self.output = self.sample_bank.samples[category][idx]
         except:
@@ -51,6 +51,8 @@ class BasicChooser(ChooserBase):
     def __init__(self, main):
         self.main = main
         self.output = None
+        self.seedgen = None
+        self.sample_bank = None
 
     def init(self):
         self.sample_bank = self.main.get_module('samplebank')
@@ -65,6 +67,10 @@ class IntelligentChooser(ChooserBase):
     def __init__(self, main):
         self.main = main
         self.output = None
+        self.seedgen = None
+        self.sample_bank = None
+        self.sigproc = None
+
 
     def init(self):
         self.sample_bank = self.main.get_module('samplebank')
@@ -74,5 +80,5 @@ class IntelligentChooser(ChooserBase):
     def execute(self):
         categories = [c for c, v in
                       self.sigproc.get_output()['samples'].items()
-                      if v == True]
+                      if v is True]
         self.choose_from_categories(categories)
