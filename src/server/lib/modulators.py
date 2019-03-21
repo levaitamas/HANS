@@ -43,7 +43,7 @@ class Modulator(HansModule):
         self.effectchain = {}
         for e in self.effect_types:
             self.effectchain[e] = False
-            self.effectchain['%s-param' % e] = 0
+            self.effectchain[f'{e}-param'] = 0
 
         self.player = pyo.TableRead(pyo.NewTable(0.1), loop=False)
         denorm_noise = pyo.Noise(1e-24)
@@ -71,7 +71,7 @@ class Modulator(HansModule):
                                     False: 1}[self.effectchain['Speed']]
         self.player.setFreq(freq)
         for effect in ('Distortion', 'Chorus', 'Reverb'):
-            sw = getattr(self, 'sw_%s' % effect.lower())
+            sw = getattr(self, f'sw_{effect.lower()}')
             sw.interp = int(self.effectchain[effect])
 
         self.output.setPan(random.choice(self.pan_positions))

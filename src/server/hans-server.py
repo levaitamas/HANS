@@ -119,9 +119,9 @@ class OSCProc:
 
 
 def handle_osc(address, *args):
-    for type in ('midi', 'ctrl', 'cmd'):
-        if type in address:
-            globals()['handle_osc_%s' % type](address, *args)
+    for mtype in ('midi', 'ctrl', 'cmd'):
+        if mtype in address:
+            globals()[f'handle_osc_{mtype}'](address, *args)
 
 
 def handle_osc_midi(address, *args):

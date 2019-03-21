@@ -94,12 +94,12 @@ class SigProc(HansModule):
                           for name, analyser in self.analysers.items()}
 
     def set_inputlim(self, name, value):
-        setattr(self, '%slim' % name, value)
+        setattr(self, f'{name}lim', value)
 
     def set_rules_toggle_levels(self, rules_file=None):
         if rules_file:
             self.rules_file = rules_file
-        self.rulelist = [self.Rule("%s%s" % (cat, i), cat, 1/i)
+        self.rulelist = [self.Rule(f'{cat}{i}', cat, 1/i)
                          for cat in self.main.get_effect_types()
                          for i in range(1, 3)]
         self.load_rules(self.rules_file)
@@ -130,7 +130,7 @@ class SigProc(HansModule):
     def init_outputlist(self):
         self.outputlist = {cat: 0
                            for cat in self.main.get_sample_categories()}
-        self.outputlist.update({'%s%s' % (c, i): 0
+        self.outputlist.update({f'{c}{i}': 0
                                 for c in self.main.get_effect_types()
                                 for i in ('', '1', '2')})
 
@@ -148,8 +148,8 @@ class SigProc(HansModule):
 
     def age(self, key):
         try:
-            self.outputlist["%s2" % key] = 0.5 * self.outputlist["%s1" % key]
-            self.outputlist["%s1" % key] = self.outputlist[key]
+            self.outputlist[f'{key}2'] = 0.5 * self.outputlist[f'{key}1']
+            self.outputlist[f'{key}1'] = self.outputlist[key]
         except KeyError:
             pass
 

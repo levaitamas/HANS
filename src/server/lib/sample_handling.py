@@ -29,8 +29,7 @@ class Sample(object):
         self.audio_rate = self.audio.getRate()
 
     def __str__(self):
-        return "{'Path': '%s', 'Category': '%s'}" \
-            % (self.path.name, self.category)
+        return "{'Path': f'{self.path.name}', 'Category': f'{self.category}'}"
 
 
 class SampleBank(object):
