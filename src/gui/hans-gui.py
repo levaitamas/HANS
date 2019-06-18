@@ -43,7 +43,7 @@ class ConnectionManager():
                           'rulesreload': '/hans/cmd/rulesreload',
                           'kick': '/hans/midi'}
         for param in ['amp', 'rms', 'cen', 'yin']:
-            self.addresses[param] = '/hans/ctrl/%s' % param
+            self.addresses[param] = f'/hans/ctrl/{param}'
 
     def get_url(self, name):
         return self.addresses[name]
@@ -118,7 +118,7 @@ class HansMainFrame(wx.Frame):
                             ('kick', 40),
                             ('samplereload', 10),
                             ('rulesreload', 20)]:
-            attr = '%sButton' % name
+            attr = f'{name}Button'
             buttonBox.Add(locals()[attr], flag=wx.EXPAND)
             buttonBox.AddSpacer(space)
 
@@ -126,8 +126,8 @@ class HansMainFrame(wx.Frame):
         panelBox.Add(buttonBox)
         panelBox.AddSpacer(20)
         for name in ['amp', 'rms', 'cen', 'yin']:
-            for type in ['lab', 'slide']:
-                attr = '%s%s' % (name, type)
+            for typ in ['lab', 'slide']:
+                attr = f'{name}{typ}'
                 panelBox.Add(locals()[attr], flag=wx.EXPAND)
             panelBox.AddSpacer(20)
 
