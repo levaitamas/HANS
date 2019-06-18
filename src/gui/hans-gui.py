@@ -23,8 +23,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import argparse
 try:
     import wx
-    if str.startswith(wx.version(), '2'):
-        wx.SL_VALUE_LABEL = 0
 except ImportError:
     raise SystemError("wxPython not found. Please, install it.")
 try:
