@@ -108,3 +108,7 @@ command:
 cd HANS/src/server
 python3 hans-server.py -m 99
 ```
+
+# License
+
+HANS is a free software and licensed under (GPLv3+)[./LICENSE].
