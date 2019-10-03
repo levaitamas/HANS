@@ -1,4 +1,7 @@
 # HANS
+[Overview](#overview) | [Installation](#installation) | [Usage](#usage) | [License](#license)
+
+## Overview
 
 HANS is a musical experiment, which focuses on the possibilities of
 human – computer musical interactions in artistic works. The three
@@ -110,4 +113,5 @@ python3 hans-server.py -m 99
 ```
 
 # License
+
 HANS is a free software and licensed under [(GPLv3+)](LICENSE).
